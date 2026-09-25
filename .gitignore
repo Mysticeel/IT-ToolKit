@@ -1,0 +1,34 @@
+# Secrets / credentials
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+*.p12
+secrets.*
+credentials.*
+
+# Local configuration
+config.json
+settings.local.json
+
+# Logs / reports / exports
+*.log
+logs/
+output/
+exports/
+reports/
+
+# Backups
+*.bak
+*.backup
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
