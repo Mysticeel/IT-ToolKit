@@ -1,0 +1,41 @@
+name: Pester Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run Pester tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Install-Module Pester `
+            -RequiredVersion 6.2.0 `
+            -Scope CurrentUser `
+            -Force `
+            -SkipPublisherCheck
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          Remove-Module Pester -Force -ErrorAction SilentlyContinue
+          Import-Module Pester -RequiredVersion 6.2.0 -Force
+
+          Invoke-Pester `
+            -Path ./tests `
+            -CI
