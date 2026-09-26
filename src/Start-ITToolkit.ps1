@@ -1,8 +1,10 @@
-$systemModulePath = Join-Path $PSScriptRoot "Modules\SystemInformation.psm1"
+$systemModulePath  = Join-Path $PSScriptRoot "Modules\SystemInformation.psm1"
 $networkModulePath = Join-Path $PSScriptRoot "Modules\NetworkDiagnostics.psm1"
+$windowsModulePath = Join-Path $PSScriptRoot "Modules\WindowsDiagnostics.psm1"
 
 Import-Module $systemModulePath -Force
 Import-Module $networkModulePath -Force
+Import-Module $windowsModulePath -Force
 
 
 function Wait-ITToolkit {
@@ -37,6 +39,7 @@ function Show-MainMenu {
 
         Write-Host "1. System Information"
         Write-Host "2. Network Diagnostics"
+        Write-Host "3. Windows Diagnostics"
         Write-Host ""
         Write-Host "Q. Exit"
         Write-Host ""
@@ -51,6 +54,10 @@ function Show-MainMenu {
 
             "2" {
                 Show-NetworkDiagnosticsMenu
+            }
+
+            "3" {
+                Show-WindowsDiagnosticsMenu
             }
 
             "Q" {
@@ -297,6 +304,139 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             default {
+                Write-Host ""
+                Write-Host "Invalid selection."
+                Start-Sleep -Seconds 1
+            }
+        }
+
+    } while ($true)
+}
+
+
+function Show-WindowsDiagnosticsMenu {
+
+    do {
+
+        Show-Header -Title "Windows Diagnostics"
+
+        Write-Host "1. Pending reboot status"
+        Write-Host "2. Automatic services not running"
+        Write-Host "3. Recent critical and error events"
+        Write-Host ""
+        Write-Host "B. Back"
+        Write-Host ""
+
+        $choice = Read-Host "Select an option"
+
+        switch ($choice.ToUpper()) {
+
+            "1" {
+
+                Show-Header -Title "Pending Reboot"
+
+                $result = Get-ITPendingReboot
+
+                Write-Host "Reboot Required : $($result.RebootRequired)"
+
+                if ($result.Reasons) {
+                    Write-Host "Reasons         : $($result.Reasons)"
+                }
+                else {
+                    Write-Host "Reasons         : None"
+                }
+
+                Wait-ITToolkit
+            }
+
+            "2" {
+
+                Show-Header -Title "Service Health"
+
+                Write-Host "Checking automatic services..."
+                Write-Host ""
+
+                $services = Get-ITServiceHealth
+
+                if ($services) {
+
+                    $services |
+                        Format-Table `
+                            Name,
+                            DisplayName,
+                            Status,
+                            StartType `
+                            -AutoSize
+                }
+                else {
+
+                    Write-Host "No stopped automatic services were found."
+                }
+
+                Wait-ITToolkit
+            }
+
+            "3" {
+
+                Show-Header -Title "Recent System Errors"
+
+                $hoursInput = Read-Host "Hours to check (default: 24)"
+
+                if ([string]::IsNullOrWhiteSpace($hoursInput)) {
+
+                    $hours = 24
+                }
+                elseif (
+                    $hoursInput -match '^\d+$' -and
+                    [int]$hoursInput -ge 1 -and
+                    [int]$hoursInput -le 168
+                ) {
+
+                    $hours = [int]$hoursInput
+                }
+                else {
+
+                    Write-Host ""
+                    Write-Host "Enter a value between 1 and 168 hours."
+
+                    Wait-ITToolkit
+                    continue
+                }
+
+                Write-Host ""
+                Write-Host "Checking the last $hours hour(s)..."
+                Write-Host ""
+
+                $events = Get-ITRecentSystemErrors -Hours $hours
+
+                if ($events) {
+
+                    $events |
+                        Format-Table `
+                            TimeCreated,
+                            Id,
+                            LevelDisplayName,
+                            ProviderName `
+                            -AutoSize
+
+                    Write-Host ""
+                    Write-Host "Full event messages are available by running:"
+                    Write-Host "Get-ITRecentSystemErrors -Hours $hours"
+                }
+                else {
+
+                    Write-Host "No critical or error events were found."
+                }
+
+                Wait-ITToolkit
+            }
+
+            "B" {
+                return
+            }
+
+            default {
+
                 Write-Host ""
                 Write-Host "Invalid selection."
                 Start-Sleep -Seconds 1
