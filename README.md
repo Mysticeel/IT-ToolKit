@@ -1,45 +1,53 @@
 # IT-Toolkit
 
-A PowerShell toolkit for Windows system diagnostics, troubleshooting and IT support.
+A PowerShell toolkit for Windows system diagnostics, troubleshooting, and IT support.
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue)
+![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
+![Tests](https://img.shields.io/github/actions/workflow/status/Mysticeel/IT-Toolkit/pester-tests.yml?label=tests)
+![License](https://img.shields.io/github/license/Mysticeel/IT-Toolkit)
 
 ## Overview
 
-IT-Toolkit is designed to help IT technicians quickly gather useful troubleshooting information from Windows systems.
+IT-Toolkit is a growing collection of Windows support and diagnostic utilities designed for IT technicians, support engineers, and homelab users.
 
-The project will include tools for:
+The project focuses on quick, practical troubleshooting while keeping the code readable and easy to extend.
 
-- System information
-- Network diagnostics
-- Storage checks
-- Windows troubleshooting
-- Event log analysis
-- Software inventory
-- Security checks
-- Diagnostic reporting
+## Features
 
-## Status
+### System Information
 
-Early development.
+- Computer manufacturer and model
+- Serial number
+- Operating system details
+- System uptime
+- Processor information
+- Memory usage
+- System drive capacity
+- IPv4 configuration
+- Default gateway
+- DNS servers
+- Current user
+- PowerShell version
+- Administrator status
 
-## Requirements
+### Network Diagnostics
 
-- Windows 10 or Windows 11
-- PowerShell 5.1 or later
+- Active network adapter information
+- Physical and virtual adapter detection
+- Internet connectivity testing
+- DNS resolution testing
+- TCP port testing
+- Trace route diagnostics
+- Wi-Fi information
+- Signal strength
+- Channel information
+- Link rates
 
-## Security
+## Quick Start
 
-This project is designed for generic Windows environments.
+Clone the repository:
 
-Do not commit:
-
-- Credentials
-- API keys
-- Internal company information
-- Customer data
-- Private IP addressing schemes
-- Internal hostnames
-- Security findings from real environments
-
-## License
-
-MIT
+```powershell
+git clone git@github.com:Mysticeel/IT-Toolkit.git
+cd IT-Toolkit
