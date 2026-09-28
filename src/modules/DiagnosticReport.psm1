@@ -2,25 +2,42 @@ function Get-ITDiagnosticReportData {
     [CmdletBinding()]
     param()
 
+    # Core diagnostic data
     $systemInfo = Get-ITSystemInformation
 
     $networkInfo = Get-ITNetworkInformation |
         Select-Object -First 1
 
     $internetStatus = Test-ITInternetConnection
-
     $dnsStatus = Test-ITDNSResolution
 
     $pendingReboot = Get-ITPendingReboot
-
     $serviceHealth = Get-ITServiceHealth
 
     $recentErrors = Get-ITRecentSystemErrors `
         -Hours 24 `
         -MaxEvents 25
 
+    # v0.8.0 integrated diagnostics
+    $storageHealth = Get-ITStorageHealth
+    $physicalDisks = Get-ITPhysicalDiskHealth
+
+    $updateStatus = Get-ITWindowsUpdateStatus
+
+    $performance = Get-ITPerformanceSnapshot
+
+    $topCPU = Get-ITTopProcesses `
+        -Top 10
+
+    $topMemory = Get-ITMemoryConsumers `
+        -Top 10
+
+    $healthAnalysis = Get-ITHealthAnalysis
+
+
     [PSCustomObject]@{
         GeneratedAt = Get-Date
+
 
         System = [PSCustomObject]@{
             ComputerName     = $systemInfo.ComputerName
@@ -45,6 +62,7 @@ function Get-ITDiagnosticReportData {
             Administrator    = $systemInfo.Administrator
         }
 
+
         Network = [PSCustomObject]@{
             InterfaceAlias      = $networkInfo.InterfaceAlias
             Description         = $networkInfo.Description
@@ -60,6 +78,7 @@ function Get-ITDiagnosticReportData {
             DNSAddresses        = $dnsStatus.Addresses
         }
 
+
         Windows = [PSCustomObject]@{
             RebootRequired         = $pendingReboot.RebootRequired
             RebootReasons          = $pendingReboot.Reasons
@@ -69,11 +88,52 @@ function Get-ITDiagnosticReportData {
             RecentSystemErrors     = @($recentErrors)
         }
 
+
+        Storage = [PSCustomObject]@{
+            LogicalDrives = @($storageHealth)
+            PhysicalDisks = @($physicalDisks)
+        }
+
+
+        WindowsUpdate = [PSCustomObject]@{
+            UpdateCount = $updateStatus.UpdateCount
+            Updates     = @($updateStatus.Updates)
+            Error       = $updateStatus.Error
+        }
+
+
+        Performance = [PSCustomObject]@{
+            CPUUsagePercent    = $performance.CPUUsagePercent
+            TotalMemoryGB      = $performance.TotalMemoryGB
+            UsedMemoryGB       = $performance.UsedMemoryGB
+            FreeMemoryGB       = $performance.FreeMemoryGB
+            MemoryUsedPercent  = $performance.MemoryUsedPercent
+            UptimeDays         = $performance.UptimeDays
+            UptimeHours        = $performance.UptimeHours
+            TopCPUProcesses    = @($topCPU)
+            TopMemoryProcesses = @($topMemory)
+        }
+
+
+        Health = [PSCustomObject]@{
+            OverallStatus = $healthAnalysis.OverallStatus
+            HealthyCount  = $healthAnalysis.HealthyCount
+            WarningCount  = $healthAnalysis.WarningCount
+            CriticalCount = $healthAnalysis.CriticalCount
+            InfoCount     = $healthAnalysis.InfoCount
+            Findings      = @($healthAnalysis.Findings)
+        }
+
+
         Summary = [PSCustomObject]@{
+            OverallHealth          = $healthAnalysis.OverallStatus
             InternetConnected      = $internetStatus.Connected
             DNSWorking             = $dnsStatus.Successful
             RebootRequired         = $pendingReboot.RebootRequired
             DriveFreePercent       = $systemInfo.DriveFreePercent
+            PendingUpdateCount     = $updateStatus.UpdateCount
+            CPUUsagePercent        = $performance.CPUUsagePercent
+            MemoryUsedPercent      = $performance.MemoryUsedPercent
             StoppedAutomaticCount  = @($serviceHealth).Count
             RecentSystemErrorCount = @($recentErrors).Count
         }
@@ -98,6 +158,26 @@ function Export-ITDiagnosticReportText {
     $lines += "Generated: $($Report.GeneratedAt)"
     $lines += ""
 
+
+    # Summary
+    $lines += "=================================================="
+    $lines += "SUMMARY"
+    $lines += "=================================================="
+
+    $lines += "Overall Health         : $($Report.Summary.OverallHealth)"
+    $lines += "Internet Connected     : $($Report.Summary.InternetConnected)"
+    $lines += "DNS Working            : $($Report.Summary.DNSWorking)"
+    $lines += "Reboot Required        : $($Report.Summary.RebootRequired)"
+    $lines += "Drive Free Percent     : $($Report.Summary.DriveFreePercent)%"
+    $lines += "Pending Updates        : $($Report.Summary.PendingUpdateCount)"
+    $lines += "CPU Usage              : $($Report.Summary.CPUUsagePercent)%"
+    $lines += "Memory Usage           : $($Report.Summary.MemoryUsedPercent)%"
+    $lines += "Stopped Auto Services  : $($Report.Summary.StoppedAutomaticCount)"
+    $lines += "Recent System Errors   : $($Report.Summary.RecentSystemErrorCount)"
+
+
+    # System Information
+    $lines += ""
     $lines += "=================================================="
     $lines += "SYSTEM INFORMATION"
     $lines += "=================================================="
@@ -122,6 +202,8 @@ function Export-ITDiagnosticReportText {
     $lines += "PowerShell         : $($Report.System.PowerShell)"
     $lines += "Administrator      : $($Report.System.Administrator)"
 
+
+    # Network
     $lines += ""
     $lines += "=================================================="
     $lines += "NETWORK"
@@ -140,6 +222,8 @@ function Export-ITDiagnosticReportText {
     $lines += "DNS Test Target    : $($Report.Network.DNSResolutionTarget)"
     $lines += "Resolved Addresses : $($Report.Network.DNSAddresses)"
 
+
+    # Windows Health
     $lines += ""
     $lines += "=================================================="
     $lines += "WINDOWS HEALTH"
@@ -150,6 +234,7 @@ function Export-ITDiagnosticReportText {
     $lines += "Stopped Auto Services : $($Report.Windows.StoppedAutomaticCount)"
     $lines += "Recent System Errors  : $($Report.Windows.RecentSystemErrorCount)"
 
+
     if ($Report.Windows.StoppedAutomaticCount -gt 0) {
 
         $lines += ""
@@ -158,9 +243,10 @@ function Export-ITDiagnosticReportText {
 
         foreach ($service in $Report.Windows.StoppedAutomatic) {
 
-            $lines += "$($service.Name) - $($service.DisplayName) - $($service.Status) - $($service.StartType)"
+            $lines += "$($service.Name) | $($service.DisplayName) | $($service.Status) | $($service.StartType)"
         }
     }
+
 
     if ($Report.Windows.RecentSystemErrorCount -gt 0) {
 
@@ -174,18 +260,156 @@ function Export-ITDiagnosticReportText {
         }
     }
 
+
+    # Storage
     $lines += ""
     $lines += "=================================================="
-    $lines += "SUMMARY"
+    $lines += "STORAGE"
     $lines += "=================================================="
 
-    $lines += "Internet Connected    : $($Report.Summary.InternetConnected)"
-    $lines += "DNS Working           : $($Report.Summary.DNSWorking)"
-    $lines += "Reboot Required       : $($Report.Summary.RebootRequired)"
-    $lines += "Drive Free Percent    : $($Report.Summary.DriveFreePercent)%"
-    $lines += "Stopped Auto Services : $($Report.Summary.StoppedAutomaticCount)"
-    $lines += "Recent System Errors  : $($Report.Summary.RecentSystemErrorCount)"
+    if (@($Report.Storage.LogicalDrives).Count -gt 0) {
 
+        $lines += "Logical Drives"
+        $lines += "--------------"
+
+        foreach ($drive in $Report.Storage.LogicalDrives) {
+
+            $lines += "$($drive.Drive) | $($drive.SizeGB) GB | $($drive.FreeGB) GB free | $($drive.FreePercent)% free | $($drive.Status)"
+        }
+    }
+    else {
+
+        $lines += "No logical drive information was returned."
+    }
+
+
+    $lines += ""
+    $lines += "Physical Disks"
+    $lines += "--------------"
+
+    if (@($Report.Storage.PhysicalDisks).Count -gt 0) {
+
+        foreach ($disk in $Report.Storage.PhysicalDisks) {
+
+            $sizeGB = if ($disk.Size) {
+                [math]::Round(
+                    $disk.Size / 1GB,
+                    2
+                )
+            }
+            else {
+                'Unknown'
+            }
+
+            $lines += "$($disk.FriendlyName) | $($disk.MediaType) | $($disk.BusType) | $sizeGB GB | $($disk.HealthStatus) | $($disk.OperationalStatus)"
+        }
+    }
+    else {
+
+        $lines += "No physical disk information was returned."
+    }
+
+
+    # Windows Update
+    $lines += ""
+    $lines += "=================================================="
+    $lines += "WINDOWS UPDATE"
+    $lines += "=================================================="
+
+    if ($Report.WindowsUpdate.Error) {
+
+        $lines += "Status : Unable to determine"
+        $lines += "Error  : $($Report.WindowsUpdate.Error)"
+    }
+    else {
+
+        $lines += "Pending Updates : $($Report.WindowsUpdate.UpdateCount)"
+
+        if ($Report.WindowsUpdate.UpdateCount -gt 0) {
+
+            $lines += ""
+
+            foreach ($update in $Report.WindowsUpdate.Updates) {
+
+                $lines += "$($update.Title) | KB: $($update.KB) | Severity: $($update.Severity) | Reboot Needed: $($update.RebootNeeded)"
+            }
+        }
+    }
+
+
+    # Performance
+    $lines += ""
+    $lines += "=================================================="
+    $lines += "PERFORMANCE"
+    $lines += "=================================================="
+
+    $lines += "CPU Usage          : $($Report.Performance.CPUUsagePercent)%"
+    $lines += "Memory Usage       : $($Report.Performance.MemoryUsedPercent)%"
+    $lines += "Total Memory       : $($Report.Performance.TotalMemoryGB) GB"
+    $lines += "Used Memory        : $($Report.Performance.UsedMemoryGB) GB"
+    $lines += "Free Memory        : $($Report.Performance.FreeMemoryGB) GB"
+    $lines += "Uptime             : $($Report.Performance.UptimeDays) day(s), $($Report.Performance.UptimeHours) hour(s)"
+
+
+    $lines += ""
+    $lines += "Top CPU Processes"
+    $lines += "-----------------"
+
+    foreach ($process in $Report.Performance.TopCPUProcesses) {
+
+        $cpuValue = if ($null -ne $process.CPU) {
+            [math]::Round(
+                [double]$process.CPU,
+                2
+            )
+        }
+        else {
+            0
+        }
+
+        $lines += "$($process.ProcessName) | PID $($process.Id) | CPU Time: $cpuValue | Handles: $($process.Handles)"
+    }
+
+
+    $lines += ""
+    $lines += "Top Memory Processes"
+    $lines += "--------------------"
+
+    foreach ($process in $Report.Performance.TopMemoryProcesses) {
+
+        $lines += "$($process.ProcessName) | PID $($process.Id) | $($process.MemoryMB) MB | Handles: $($process.Handles)"
+    }
+
+
+    # Health Analysis
+    $lines += ""
+    $lines += "=================================================="
+    $lines += "HEALTH ANALYSIS"
+    $lines += "=================================================="
+
+    $lines += "Overall Status : $($Report.Health.OverallStatus)"
+    $lines += "Healthy        : $($Report.Health.HealthyCount)"
+    $lines += "Warnings       : $($Report.Health.WarningCount)"
+    $lines += "Critical       : $($Report.Health.CriticalCount)"
+    $lines += "Information    : $($Report.Health.InfoCount)"
+    $lines += ""
+
+
+    foreach ($finding in $Report.Health.Findings) {
+
+        $lines += "[$($finding.Severity)] $($finding.Area)"
+        $lines += "  $($finding.Finding)"
+
+        if ($finding.Recommendation) {
+
+            $lines += "  Recommendation: $($finding.Recommendation)"
+        }
+
+        $lines += ""
+    }
+
+
+    # Ensure destination exists
     $directory = Split-Path $Path -Parent
 
     if (
@@ -200,10 +424,12 @@ function Export-ITDiagnosticReportText {
             Out-Null
     }
 
+
     $lines |
         Set-Content `
             -Path $Path `
             -Encoding UTF8
+
 
     Get-Item $Path
 }
@@ -219,6 +445,7 @@ function Export-ITDiagnosticReportHtml {
         [ValidateNotNullOrEmpty()]
         [string]$Path
     )
+
 
     function ConvertTo-ITHtmlEncodedValue {
         param(
@@ -257,6 +484,93 @@ function Export-ITDiagnosticReportHtml {
     }
 
 
+    function Get-ITSeverityClass {
+        param(
+            [AllowNull()]
+            [string]$Severity
+        )
+
+        switch ($Severity) {
+
+            'Healthy' {
+                'healthy'
+            }
+
+            'Information' {
+                'information'
+            }
+
+            'Warning' {
+                'warning'
+            }
+
+            'Critical' {
+                'critical'
+            }
+
+            default {
+                'neutral'
+            }
+        }
+    }
+
+
+    # Summary
+    $summaryRows = @(
+
+        [PSCustomObject]@{
+            Label = 'Overall Health'
+            Value = $Report.Summary.OverallHealth
+        }
+
+        [PSCustomObject]@{
+            Label = 'Internet Connected'
+            Value = $Report.Summary.InternetConnected
+        }
+
+        [PSCustomObject]@{
+            Label = 'DNS Working'
+            Value = $Report.Summary.DNSWorking
+        }
+
+        [PSCustomObject]@{
+            Label = 'Reboot Required'
+            Value = $Report.Summary.RebootRequired
+        }
+
+        [PSCustomObject]@{
+            Label = 'Drive Free Percent'
+            Value = "$($Report.Summary.DriveFreePercent)%"
+        }
+
+        [PSCustomObject]@{
+            Label = 'Pending Updates'
+            Value = $Report.Summary.PendingUpdateCount
+        }
+
+        [PSCustomObject]@{
+            Label = 'CPU Usage'
+            Value = "$($Report.Summary.CPUUsagePercent)%"
+        }
+
+        [PSCustomObject]@{
+            Label = 'Memory Usage'
+            Value = "$($Report.Summary.MemoryUsedPercent)%"
+        }
+
+        [PSCustomObject]@{
+            Label = 'Stopped Automatic Services'
+            Value = $Report.Summary.StoppedAutomaticCount
+        }
+
+        [PSCustomObject]@{
+            Label = 'Recent System Errors'
+            Value = $Report.Summary.RecentSystemErrorCount
+        }
+    )
+
+
+    # System Information
     $systemRows = @(
 
         [PSCustomObject]@{
@@ -356,6 +670,7 @@ function Export-ITDiagnosticReportHtml {
     )
 
 
+    # Network
     $networkRows = @(
 
         [PSCustomObject]@{
@@ -420,39 +735,43 @@ function Export-ITDiagnosticReportHtml {
     )
 
 
-    $summaryRows = @(
+    # Performance summary
+    $performanceRows = @(
 
         [PSCustomObject]@{
-            Label = 'Internet Connected'
-            Value = $Report.Summary.InternetConnected
+            Label = 'CPU Usage'
+            Value = "$($Report.Performance.CPUUsagePercent)%"
         }
 
         [PSCustomObject]@{
-            Label = 'DNS Working'
-            Value = $Report.Summary.DNSWorking
+            Label = 'Memory Usage'
+            Value = "$($Report.Performance.MemoryUsedPercent)%"
         }
 
         [PSCustomObject]@{
-            Label = 'Reboot Required'
-            Value = $Report.Summary.RebootRequired
+            Label = 'Total Memory'
+            Value = "$($Report.Performance.TotalMemoryGB) GB"
         }
 
         [PSCustomObject]@{
-            Label = 'Drive Free Percent'
-            Value = "$($Report.Summary.DriveFreePercent)%"
+            Label = 'Used Memory'
+            Value = "$($Report.Performance.UsedMemoryGB) GB"
         }
 
         [PSCustomObject]@{
-            Label = 'Stopped Automatic Services'
-            Value = $Report.Summary.StoppedAutomaticCount
+            Label = 'Free Memory'
+            Value = "$($Report.Performance.FreeMemoryGB) GB"
         }
 
         [PSCustomObject]@{
-            Label = 'Recent System Errors'
-            Value = $Report.Summary.RecentSystemErrorCount
+            Label = 'Uptime'
+            Value = "$($Report.Performance.UptimeDays) day(s), $($Report.Performance.UptimeHours) hour(s)"
         }
     )
 
+
+    $summaryHtml = ConvertTo-ITTableRows `
+        -Rows $summaryRows
 
     $systemHtml = ConvertTo-ITTableRows `
         -Rows $systemRows
@@ -460,10 +779,11 @@ function Export-ITDiagnosticReportHtml {
     $networkHtml = ConvertTo-ITTableRows `
         -Rows $networkRows
 
-    $summaryHtml = ConvertTo-ITTableRows `
-        -Rows $summaryRows
+    $performanceHtml = ConvertTo-ITTableRows `
+        -Rows $performanceRows
 
 
+    # Stopped services
     $servicesHtml = if (
         $Report.Windows.StoppedAutomaticCount -gt 0
     ) {
@@ -504,7 +824,6 @@ function Export-ITDiagnosticReportHtml {
 <th>Start Type</th>
 </tr>
 </thead>
-
 <tbody>
 $($rows -join "`n")
 </tbody>
@@ -517,6 +836,7 @@ $($rows -join "`n")
     }
 
 
+    # Recent events
     $eventsHtml = if (
         $Report.Windows.RecentSystemErrorCount -gt 0
     ) {
@@ -557,7 +877,6 @@ $($rows -join "`n")
 <th>Provider</th>
 </tr>
 </thead>
-
 <tbody>
 $($rows -join "`n")
 </tbody>
@@ -570,8 +889,400 @@ $($rows -join "`n")
     }
 
 
+    # Logical drives
+    $logicalDrivesHtml = if (
+        @($Report.Storage.LogicalDrives).Count -gt 0
+    ) {
+
+        $rows = foreach (
+            $drive in $Report.Storage.LogicalDrives
+        ) {
+
+            $driveName = ConvertTo-ITHtmlEncodedValue `
+                -Value $drive.Drive
+
+            $volumeName = ConvertTo-ITHtmlEncodedValue `
+                -Value $drive.VolumeName
+
+            $fileSystem = ConvertTo-ITHtmlEncodedValue `
+                -Value $drive.FileSystem
+
+            $size = ConvertTo-ITHtmlEncodedValue `
+                -Value $drive.SizeGB
+
+            $free = ConvertTo-ITHtmlEncodedValue `
+                -Value $drive.FreeGB
+
+            $freePercent = ConvertTo-ITHtmlEncodedValue `
+                -Value $drive.FreePercent
+
+            $status = ConvertTo-ITHtmlEncodedValue `
+                -Value $drive.Status
+
+            $statusClass = Get-ITSeverityClass `
+                -Severity $drive.Status
+
+            @"
+<tr>
+<td>$driveName</td>
+<td>$volumeName</td>
+<td>$fileSystem</td>
+<td>$size GB</td>
+<td>$free GB</td>
+<td>$freePercent%</td>
+<td><span class="badge $statusClass">$status</span></td>
+</tr>
+"@
+        }
+
+        @"
+<table>
+<thead>
+<tr>
+<th>Drive</th>
+<th>Volume</th>
+<th>File System</th>
+<th>Size</th>
+<th>Free</th>
+<th>Free %</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+$($rows -join "`n")
+</tbody>
+</table>
+"@
+    }
+    else {
+
+        "<p>No logical drive information was returned.</p>"
+    }
+
+
+    # Physical disks
+    $physicalDisksHtml = if (
+        @($Report.Storage.PhysicalDisks).Count -gt 0
+    ) {
+
+        $rows = foreach (
+            $disk in $Report.Storage.PhysicalDisks
+        ) {
+
+            $friendlyName = ConvertTo-ITHtmlEncodedValue `
+                -Value $disk.FriendlyName
+
+            $mediaType = ConvertTo-ITHtmlEncodedValue `
+                -Value $disk.MediaType
+
+            $busType = ConvertTo-ITHtmlEncodedValue `
+                -Value $disk.BusType
+
+            $sizeGB = if ($disk.Size) {
+
+                [math]::Round(
+                    $disk.Size / 1GB,
+                    2
+                )
+            }
+            else {
+
+                'Unknown'
+            }
+
+            $sizeGB = ConvertTo-ITHtmlEncodedValue `
+                -Value $sizeGB
+
+            $health = ConvertTo-ITHtmlEncodedValue `
+                -Value $disk.HealthStatus
+
+            $operational = ConvertTo-ITHtmlEncodedValue `
+                -Value $disk.OperationalStatus
+
+            @"
+<tr>
+<td>$friendlyName</td>
+<td>$mediaType</td>
+<td>$busType</td>
+<td>$sizeGB GB</td>
+<td>$health</td>
+<td>$operational</td>
+</tr>
+"@
+        }
+
+        @"
+<table>
+<thead>
+<tr>
+<th>Disk</th>
+<th>Media Type</th>
+<th>Bus Type</th>
+<th>Size</th>
+<th>Health</th>
+<th>Operational Status</th>
+</tr>
+</thead>
+<tbody>
+$($rows -join "`n")
+</tbody>
+</table>
+"@
+    }
+    else {
+
+        "<p>No physical disk information was returned.</p>"
+    }
+
+
+    # Windows Updates
+    $updatesHtml = if ($Report.WindowsUpdate.Error) {
+
+        $errorText = ConvertTo-ITHtmlEncodedValue `
+            -Value $Report.WindowsUpdate.Error
+
+        @"
+<p class="notice">
+Windows Update status could not be determined.
+</p>
+
+<p>$errorText</p>
+"@
+    }
+    elseif ($Report.WindowsUpdate.UpdateCount -gt 0) {
+
+        $rows = foreach (
+            $update in $Report.WindowsUpdate.Updates
+        ) {
+
+            $title = ConvertTo-ITHtmlEncodedValue `
+                -Value $update.Title
+
+            $severity = ConvertTo-ITHtmlEncodedValue `
+                -Value $update.Severity
+
+            $kb = ConvertTo-ITHtmlEncodedValue `
+                -Value $update.KB
+
+            $rebootNeeded = ConvertTo-ITHtmlEncodedValue `
+                -Value $update.RebootNeeded
+
+            @"
+<tr>
+<td>$title</td>
+<td>$kb</td>
+<td>$severity</td>
+<td>$rebootNeeded</td>
+</tr>
+"@
+        }
+
+        @"
+<p>Pending updates: $($Report.WindowsUpdate.UpdateCount)</p>
+
+<table>
+<thead>
+<tr>
+<th>Title</th>
+<th>KB</th>
+<th>Severity</th>
+<th>Reboot Needed</th>
+</tr>
+</thead>
+<tbody>
+$($rows -join "`n")
+</tbody>
+</table>
+"@
+    }
+    else {
+
+        "<p>No pending software updates were detected.</p>"
+    }
+
+
+    # Top CPU
+    $topCPUHtml = if (
+        @($Report.Performance.TopCPUProcesses).Count -gt 0
+    ) {
+
+        $rows = foreach (
+            $process in $Report.Performance.TopCPUProcesses
+        ) {
+
+            $name = ConvertTo-ITHtmlEncodedValue `
+                -Value $process.ProcessName
+
+            $id = ConvertTo-ITHtmlEncodedValue `
+                -Value $process.Id
+
+            $cpu = if ($null -ne $process.CPU) {
+
+                [math]::Round(
+                    [double]$process.CPU,
+                    2
+                )
+            }
+            else {
+
+                0
+            }
+
+            $cpu = ConvertTo-ITHtmlEncodedValue `
+                -Value $cpu
+
+            $handles = ConvertTo-ITHtmlEncodedValue `
+                -Value $process.Handles
+
+            @"
+<tr>
+<td>$name</td>
+<td>$id</td>
+<td>$cpu</td>
+<td>$handles</td>
+</tr>
+"@
+        }
+
+        @"
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>PID</th>
+<th>CPU Time</th>
+<th>Handles</th>
+</tr>
+</thead>
+<tbody>
+$($rows -join "`n")
+</tbody>
+</table>
+"@
+    }
+    else {
+
+        "<p>No process information was returned.</p>"
+    }
+
+
+    # Top Memory
+    $topMemoryHtml = if (
+        @($Report.Performance.TopMemoryProcesses).Count -gt 0
+    ) {
+
+        $rows = foreach (
+            $process in $Report.Performance.TopMemoryProcesses
+        ) {
+
+            $name = ConvertTo-ITHtmlEncodedValue `
+                -Value $process.ProcessName
+
+            $id = ConvertTo-ITHtmlEncodedValue `
+                -Value $process.Id
+
+            $memory = ConvertTo-ITHtmlEncodedValue `
+                -Value $process.MemoryMB
+
+            $handles = ConvertTo-ITHtmlEncodedValue `
+                -Value $process.Handles
+
+            @"
+<tr>
+<td>$name</td>
+<td>$id</td>
+<td>$memory MB</td>
+<td>$handles</td>
+</tr>
+"@
+        }
+
+        @"
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>PID</th>
+<th>Memory</th>
+<th>Handles</th>
+</tr>
+</thead>
+<tbody>
+$($rows -join "`n")
+</tbody>
+</table>
+"@
+    }
+    else {
+
+        "<p>No process information was returned.</p>"
+    }
+
+
+    # Health findings
+    $healthFindingsHtml = if (
+        @($Report.Health.Findings).Count -gt 0
+    ) {
+
+        $rows = foreach (
+            $finding in $Report.Health.Findings
+        ) {
+
+            $area = ConvertTo-ITHtmlEncodedValue `
+                -Value $finding.Area
+
+            $severity = ConvertTo-ITHtmlEncodedValue `
+                -Value $finding.Severity
+
+            $findingText = ConvertTo-ITHtmlEncodedValue `
+                -Value $finding.Finding
+
+            $recommendation = ConvertTo-ITHtmlEncodedValue `
+                -Value $finding.Recommendation
+
+            $severityClass = Get-ITSeverityClass `
+                -Severity $finding.Severity
+
+            @"
+<tr>
+<td>$area</td>
+<td><span class="badge $severityClass">$severity</span></td>
+<td>$findingText</td>
+<td>$recommendation</td>
+</tr>
+"@
+        }
+
+        @"
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Severity</th>
+<th>Finding</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+$($rows -join "`n")
+</tbody>
+</table>
+"@
+    }
+    else {
+
+        "<p>No health findings were returned.</p>"
+    }
+
+
     $generatedAt = ConvertTo-ITHtmlEncodedValue `
         -Value $Report.GeneratedAt
+
+    $overallHealth = ConvertTo-ITHtmlEncodedValue `
+        -Value $Report.Health.OverallStatus
+
+    $overallHealthClass = Get-ITSeverityClass `
+        -Severity $Report.Health.OverallStatus
 
     $rebootRequired = ConvertTo-ITHtmlEncodedValue `
         -Value $Report.Windows.RebootRequired
@@ -616,7 +1327,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1300px;
     margin: 0 auto;
 }
 
@@ -685,6 +1396,54 @@ tbody tr:hover {
     background: #f9fafb;
 }
 
+.badge {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge.healthy {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge.information {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge.critical {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge.neutral {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.health-banner {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 10px;
+    background: #f9fafb;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.notice {
+    padding: 12px;
+    border-radius: 8px;
+    background: #fef3c7;
+}
+
 .footer {
     margin-top: 30px;
     padding: 10px;
@@ -714,14 +1473,15 @@ tbody tr:hover {
 
 <h2>Summary</h2>
 
+<div class="health-banner">
+Overall Health:
+<span class="badge $overallHealthClass">$overallHealth</span>
+</div>
+
 <table>
-
 <tbody>
-
 $($summaryHtml -join "`n")
-
 </tbody>
-
 </table>
 
 </section>
@@ -732,13 +1492,9 @@ $($summaryHtml -join "`n")
 <h2>System Information</h2>
 
 <table>
-
 <tbody>
-
 $($systemHtml -join "`n")
-
 </tbody>
-
 </table>
 
 </section>
@@ -749,13 +1505,9 @@ $($systemHtml -join "`n")
 <h2>Network</h2>
 
 <table>
-
 <tbody>
-
 $($networkHtml -join "`n")
-
 </tbody>
-
 </table>
 
 </section>
@@ -766,7 +1518,6 @@ $($networkHtml -join "`n")
 <h2>Windows Health</h2>
 
 <table>
-
 <tbody>
 
 <tr>
@@ -790,18 +1541,88 @@ $($networkHtml -join "`n")
 </tr>
 
 </tbody>
-
 </table>
-
 
 <h3>Stopped Automatic Services</h3>
 
 $servicesHtml
 
-
 <h3>Recent System Errors</h3>
 
 $eventsHtml
+
+</section>
+
+
+<section>
+
+<h2>Storage</h2>
+
+<h3>Logical Drives</h3>
+
+$logicalDrivesHtml
+
+<h3>Physical Disks</h3>
+
+$physicalDisksHtml
+
+</section>
+
+
+<section>
+
+<h2>Windows Update</h2>
+
+$updatesHtml
+
+</section>
+
+
+<section>
+
+<h2>Performance</h2>
+
+<table>
+<tbody>
+$($performanceHtml -join "`n")
+</tbody>
+</table>
+
+<h3>Top CPU Processes</h3>
+
+<p>
+CPU represents accumulated processor time rather than live CPU percentage.
+</p>
+
+$topCPUHtml
+
+<h3>Top Memory Processes</h3>
+
+$topMemoryHtml
+
+</section>
+
+
+<section>
+
+<h2>Health Analysis</h2>
+
+<div class="health-banner">
+Overall Status:
+<span class="badge $overallHealthClass">$overallHealth</span>
+</div>
+
+<p>
+Healthy: $($Report.Health.HealthyCount)
+&nbsp; | &nbsp;
+Warnings: $($Report.Health.WarningCount)
+&nbsp; | &nbsp;
+Critical: $($Report.Health.CriticalCount)
+&nbsp; | &nbsp;
+Information: $($Report.Health.InfoCount)
+</p>
+
+$healthFindingsHtml
 
 </section>
 
@@ -819,6 +1640,7 @@ Generated locally by IT-Toolkit.
 </html>
 "@
 
+
     $directory = Split-Path $Path -Parent
 
     if (
@@ -833,10 +1655,12 @@ Generated locally by IT-Toolkit.
             Out-Null
     }
 
+
     $html |
         Set-Content `
             -Path $Path `
             -Encoding UTF8
+
 
     Get-Item $Path
 }
