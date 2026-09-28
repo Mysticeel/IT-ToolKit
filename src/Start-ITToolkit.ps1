@@ -3,12 +3,16 @@ $networkModulePath = Join-Path $PSScriptRoot "Modules\NetworkDiagnostics.psm1"
 $windowsModulePath = Join-Path $PSScriptRoot "Modules\WindowsDiagnostics.psm1"
 $reportModulePath  = Join-Path $PSScriptRoot "Modules\DiagnosticReport.psm1"
 $healthModulePath  = Join-Path $PSScriptRoot "Modules\HealthAnalysis.psm1"
+$storageModulePath = Join-Path $PSScriptRoot "Modules\StorageDiagnostics.psm1"
+$updateModulePath  = Join-Path $PSScriptRoot "Modules\WindowsUpdateDiagnostics.psm1"
 
 Import-Module $systemModulePath -Force
 Import-Module $networkModulePath -Force
 Import-Module $windowsModulePath -Force
 Import-Module $reportModulePath -Force
 Import-Module $healthModulePath -Force
+Import-Module $storageModulePath -Force
+Import-Module $updateModulePath -Force
 
 
 function Wait-ITToolkit {
@@ -253,7 +257,6 @@ function Show-NetworkDiagnosticsMenu {
             default {
                 Write-Host ""
                 Write-Host "Invalid selection."
-
                 Start-Sleep -Seconds 1
             }
         }
@@ -377,7 +380,6 @@ function Show-WindowsDiagnosticsMenu {
             default {
                 Write-Host ""
                 Write-Host "Invalid selection."
-
                 Start-Sleep -Seconds 1
             }
         }
@@ -408,7 +410,6 @@ function Show-DiagnosticReportMenu {
         if ($choice -notin @("1", "2", "3")) {
             Write-Host ""
             Write-Host "Invalid selection."
-
             Start-Sleep -Seconds 1
             continue
         }
@@ -587,6 +588,180 @@ function Show-SystemHealthAnalysis {
 }
 
 
+function Show-StorageDiagnosticsMenu {
+
+    do {
+
+        Show-Header -Title "Storage Diagnostics"
+
+        Write-Host "1. Logical drive health"
+        Write-Host "2. Physical disk health"
+        Write-Host ""
+        Write-Host "B. Back"
+        Write-Host ""
+
+        $choice = Read-Host "Select an option"
+
+        switch ($choice.ToUpper()) {
+
+            "1" {
+                Show-Header -Title "Logical Drive Health"
+
+                Write-Host "Checking logical drives..."
+                Write-Host ""
+
+                $volumes = Get-ITStorageHealth
+
+                if ($volumes) {
+                    $volumes |
+                        Format-Table `
+                            Drive,
+                            VolumeName,
+                            FileSystem,
+                            SizeGB,
+                            FreeGB,
+                            FreePercent,
+                            Status `
+                            -AutoSize
+                }
+                else {
+                    Write-Host "No fixed logical drives were found."
+                }
+
+                Wait-ITToolkit
+            }
+
+            "2" {
+                Show-Header -Title "Physical Disk Health"
+
+                Write-Host "Checking physical disks..."
+                Write-Host ""
+
+                $disks = Get-ITPhysicalDiskHealth
+
+                if ($disks) {
+                    $disks |
+                        Format-Table `
+                            FriendlyName,
+                            MediaType,
+                            BusType,
+                            Size,
+                            HealthStatus,
+                            OperationalStatus `
+                            -AutoSize
+                }
+                else {
+                    Write-Host "No physical disk information was returned."
+                }
+
+                Wait-ITToolkit
+            }
+
+            "B" {
+                return
+            }
+
+            default {
+                Write-Host ""
+                Write-Host "Invalid selection."
+                Start-Sleep -Seconds 1
+            }
+        }
+
+    } while ($true)
+}
+
+
+function Show-WindowsUpdateDiagnosticsMenu {
+
+    do {
+
+        Show-Header -Title "Windows Update Diagnostics"
+
+        Write-Host "1. Available updates"
+        Write-Host "2. Update history"
+        Write-Host ""
+        Write-Host "B. Back"
+        Write-Host ""
+
+        $choice = Read-Host "Select an option"
+
+        switch ($choice.ToUpper()) {
+
+            "1" {
+                Show-Header -Title "Available Windows Updates"
+
+                Write-Host "Checking for available updates..."
+                Write-Host ""
+                Write-Host "This may take a few moments."
+                Write-Host ""
+
+                $result = Get-ITWindowsUpdateStatus
+
+                if ($result.Error) {
+                    Write-Host "Unable to retrieve update information."
+                    Write-Host ""
+                    Write-Host "Error:"
+                    Write-Host $result.Error
+                }
+                elseif ($result.UpdateCount -eq 0) {
+                    Write-Host "No pending software updates were found."
+                }
+                else {
+                    Write-Host "Updates found: $($result.UpdateCount)"
+                    Write-Host ""
+
+                    $result.Updates |
+                        Format-Table `
+                            Title,
+                            Severity,
+                            KB,
+                            RebootNeeded `
+                            -AutoSize
+                }
+
+                Wait-ITToolkit
+            }
+
+            "2" {
+                Show-Header -Title "Windows Update History"
+
+                Write-Host "Retrieving Windows Update history..."
+                Write-Host ""
+
+                $history = Get-ITWindowsUpdateHistory
+
+                if ($history) {
+                    $history |
+                        Format-Table `
+                            Date,
+                            Title,
+                            ResultCode,
+                            HResult `
+                            -AutoSize
+                }
+                else {
+                    Write-Host "No Windows Update history was returned."
+                }
+
+                Wait-ITToolkit
+            }
+
+            "B" {
+                return
+            }
+
+            default {
+                Write-Host ""
+                Write-Host "Invalid selection."
+                Start-Sleep -Seconds 1
+            }
+        }
+
+    } while ($true)
+}
+
+
 function Show-MainMenu {
 
     do {
@@ -598,6 +773,8 @@ function Show-MainMenu {
         Write-Host "3. Windows Diagnostics"
         Write-Host "4. Generate Diagnostic Report"
         Write-Host "5. System Health Analysis"
+        Write-Host "6. Storage Diagnostics"
+        Write-Host "7. Windows Update Diagnostics"
         Write-Host ""
         Write-Host "Q. Exit"
         Write-Host ""
@@ -626,6 +803,14 @@ function Show-MainMenu {
                 Show-SystemHealthAnalysis
             }
 
+            "6" {
+                Show-StorageDiagnosticsMenu
+            }
+
+            "7" {
+                Show-WindowsUpdateDiagnosticsMenu
+            }
+
             "Q" {
                 return
             }
@@ -633,7 +818,6 @@ function Show-MainMenu {
             default {
                 Write-Host ""
                 Write-Host "Invalid selection."
-
                 Start-Sleep -Seconds 1
             }
         }
