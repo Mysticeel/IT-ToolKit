@@ -1,10 +1,12 @@
 $systemModulePath  = Join-Path $PSScriptRoot "Modules\SystemInformation.psm1"
 $networkModulePath = Join-Path $PSScriptRoot "Modules\NetworkDiagnostics.psm1"
 $windowsModulePath = Join-Path $PSScriptRoot "Modules\WindowsDiagnostics.psm1"
+$reportModulePath  = Join-Path $PSScriptRoot "Modules\DiagnosticReport.psm1"
 
 Import-Module $systemModulePath -Force
 Import-Module $networkModulePath -Force
 Import-Module $windowsModulePath -Force
+Import-Module $reportModulePath -Force
 
 
 function Wait-ITToolkit {
@@ -31,50 +33,6 @@ function Show-Header {
 }
 
 
-function Show-MainMenu {
-
-    do {
-
-        Show-Header -Title "Windows Support Toolkit"
-
-        Write-Host "1. System Information"
-        Write-Host "2. Network Diagnostics"
-        Write-Host "3. Windows Diagnostics"
-        Write-Host ""
-        Write-Host "Q. Exit"
-        Write-Host ""
-
-        $selection = Read-Host "Select an option"
-
-        switch ($selection.ToUpper()) {
-
-            "1" {
-                Show-SystemInformation
-            }
-
-            "2" {
-                Show-NetworkDiagnosticsMenu
-            }
-
-            "3" {
-                Show-WindowsDiagnosticsMenu
-            }
-
-            "Q" {
-                return
-            }
-
-            default {
-                Write-Host ""
-                Write-Host "Invalid selection."
-                Start-Sleep -Seconds 1
-            }
-        }
-
-    } while ($true)
-}
-
-
 function Show-SystemInformation {
 
     Show-Header -Title "System Information"
@@ -82,7 +40,8 @@ function Show-SystemInformation {
     Write-Host "Collecting system information..."
     Write-Host ""
 
-    Get-ITSystemInformation | Format-List
+    Get-ITSystemInformation |
+        Format-List
 
     Wait-ITToolkit
 }
@@ -236,7 +195,8 @@ function Show-NetworkDiagnosticsMenu {
                 Write-Host "Tracing route to $hostname..."
                 Write-Host ""
 
-                $result = Invoke-ITTraceRoute -ComputerName $hostname
+                $result = Invoke-ITTraceRoute `
+                    -ComputerName $hostname
 
                 Write-Host "Computer Name  : $($result.ComputerName)"
                 Write-Host "Remote Address : $($result.RemoteAddress)"
@@ -251,7 +211,9 @@ function Show-NetworkDiagnosticsMenu {
                     $hop = 1
 
                     foreach ($address in $result.TraceRoute) {
+
                         Write-Host ("{0,3}. {1}" -f $hop, $address)
+
                         $hop++
                     }
                 }
@@ -291,6 +253,7 @@ function Show-NetworkDiagnosticsMenu {
                     Write-Host "No active Wi-Fi connection was detected."
 
                     if ($wifi.Error) {
+
                         Write-Host ""
                         Write-Host "Details: $($wifi.Error)"
                     }
@@ -304,8 +267,10 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             default {
+
                 Write-Host ""
                 Write-Host "Invalid selection."
+
                 Start-Sleep -Seconds 1
             }
         }
@@ -340,9 +305,11 @@ function Show-WindowsDiagnosticsMenu {
                 Write-Host "Reboot Required : $($result.RebootRequired)"
 
                 if ($result.Reasons) {
+
                     Write-Host "Reasons         : $($result.Reasons)"
                 }
                 else {
+
                     Write-Host "Reasons         : None"
                 }
 
@@ -407,7 +374,8 @@ function Show-WindowsDiagnosticsMenu {
                 Write-Host "Checking the last $hours hour(s)..."
                 Write-Host ""
 
-                $events = Get-ITRecentSystemErrors -Hours $hours
+                $events = Get-ITRecentSystemErrors `
+                    -Hours $hours
 
                 if ($events) {
 
@@ -439,6 +407,206 @@ function Show-WindowsDiagnosticsMenu {
 
                 Write-Host ""
                 Write-Host "Invalid selection."
+
+                Start-Sleep -Seconds 1
+            }
+        }
+
+    } while ($true)
+}
+
+
+function Show-DiagnosticReportMenu {
+
+    do {
+
+        Show-Header -Title "Generate Diagnostic Report"
+
+        Write-Host "1. Generate HTML report"
+        Write-Host "2. Generate text report"
+        Write-Host "3. Generate both"
+        Write-Host ""
+        Write-Host "B. Back"
+        Write-Host ""
+
+        $choice = Read-Host "Select an option"
+
+        if ($choice.ToUpper() -eq "B") {
+            return
+        }
+
+        if ($choice -notin @("1", "2", "3")) {
+
+            Write-Host ""
+            Write-Host "Invalid selection."
+
+            Start-Sleep -Seconds 1
+
+            continue
+        }
+
+        Show-Header -Title "Generating Diagnostic Report"
+
+        Write-Host "Collecting diagnostic information..."
+        Write-Host ""
+        Write-Host "This may take a few moments."
+        Write-Host ""
+
+        try {
+
+            $report = Get-ITDiagnosticReportData
+
+            $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+
+            $reportDirectory = Join-Path `
+                $PSScriptRoot `
+                "..\reports"
+
+            $reportDirectory = [System.IO.Path]::GetFullPath(
+                $reportDirectory
+            )
+
+            if (-not (Test-Path $reportDirectory)) {
+
+                New-Item `
+                    -ItemType Directory `
+                    -Path $reportDirectory `
+                    -Force |
+                    Out-Null
+            }
+
+            $htmlPath = Join-Path `
+                $reportDirectory `
+                "IT-Toolkit-Diagnostic-$timestamp.html"
+
+            $textPath = Join-Path `
+                $reportDirectory `
+                "IT-Toolkit-Diagnostic-$timestamp.txt"
+
+            switch ($choice) {
+
+                "1" {
+
+                    Export-ITDiagnosticReportHtml `
+                        -Report $report `
+                        -Path $htmlPath |
+                        Out-Null
+
+                    Write-Host "HTML report generated successfully."
+                    Write-Host ""
+                    Write-Host "Location:"
+                    Write-Host $htmlPath
+                    Write-Host ""
+
+                    $openReport = Read-Host "Open the report now? (Y/N)"
+
+                    if ($openReport.ToUpper() -eq "Y") {
+
+                        Start-Process $htmlPath
+                    }
+                }
+
+                "2" {
+
+                    Export-ITDiagnosticReportText `
+                        -Report $report `
+                        -Path $textPath |
+                        Out-Null
+
+                    Write-Host "Text report generated successfully."
+                    Write-Host ""
+                    Write-Host "Location:"
+                    Write-Host $textPath
+                }
+
+                "3" {
+
+                    Export-ITDiagnosticReportHtml `
+                        -Report $report `
+                        -Path $htmlPath |
+                        Out-Null
+
+                    Export-ITDiagnosticReportText `
+                        -Report $report `
+                        -Path $textPath |
+                        Out-Null
+
+                    Write-Host "Reports generated successfully."
+                    Write-Host ""
+                    Write-Host "HTML:"
+                    Write-Host $htmlPath
+                    Write-Host ""
+                    Write-Host "Text:"
+                    Write-Host $textPath
+                    Write-Host ""
+
+                    $openReport = Read-Host "Open the HTML report now? (Y/N)"
+
+                    if ($openReport.ToUpper() -eq "Y") {
+
+                        Start-Process $htmlPath
+                    }
+                }
+            }
+        }
+        catch {
+
+            Write-Host ""
+            Write-Host "Unable to generate the diagnostic report."
+            Write-Host ""
+            Write-Host "Error:"
+            Write-Host $_.Exception.Message
+        }
+
+        Wait-ITToolkit
+
+    } while ($true)
+}
+
+
+function Show-MainMenu {
+
+    do {
+
+        Show-Header -Title "Windows Support Toolkit"
+
+        Write-Host "1. System Information"
+        Write-Host "2. Network Diagnostics"
+        Write-Host "3. Windows Diagnostics"
+        Write-Host "4. Generate Diagnostic Report"
+        Write-Host ""
+        Write-Host "Q. Exit"
+        Write-Host ""
+
+        $selection = Read-Host "Select an option"
+
+        switch ($selection.ToUpper()) {
+
+            "1" {
+                Show-SystemInformation
+            }
+
+            "2" {
+                Show-NetworkDiagnosticsMenu
+            }
+
+            "3" {
+                Show-WindowsDiagnosticsMenu
+            }
+
+            "4" {
+                Show-DiagnosticReportMenu
+            }
+
+            "Q" {
+                return
+            }
+
+            default {
+
+                Write-Host ""
+                Write-Host "Invalid selection."
+
                 Start-Sleep -Seconds 1
             }
         }
