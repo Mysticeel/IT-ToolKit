@@ -2,11 +2,13 @@ $systemModulePath  = Join-Path $PSScriptRoot "Modules\SystemInformation.psm1"
 $networkModulePath = Join-Path $PSScriptRoot "Modules\NetworkDiagnostics.psm1"
 $windowsModulePath = Join-Path $PSScriptRoot "Modules\WindowsDiagnostics.psm1"
 $reportModulePath  = Join-Path $PSScriptRoot "Modules\DiagnosticReport.psm1"
+$healthModulePath  = Join-Path $PSScriptRoot "Modules\HealthAnalysis.psm1"
 
 Import-Module $systemModulePath -Force
 Import-Module $networkModulePath -Force
 Import-Module $windowsModulePath -Force
 Import-Module $reportModulePath -Force
+Import-Module $healthModulePath -Force
 
 
 function Wait-ITToolkit {
@@ -69,7 +71,6 @@ function Show-NetworkDiagnosticsMenu {
         switch ($choice.ToUpper()) {
 
             "1" {
-
                 Show-Header -Title "Network Adapters"
 
                 Write-Host "Active physical network adapters"
@@ -82,7 +83,6 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "2" {
-
                 Show-Header -Title "All Network Adapters"
 
                 Write-Host "Active physical and virtual network adapters"
@@ -95,7 +95,6 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "3" {
-
                 Show-Header -Title "Internet Connectivity"
 
                 Write-Host "Testing internet connectivity..."
@@ -108,7 +107,6 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "4" {
-
                 Show-Header -Title "DNS Resolution"
 
                 $hostname = Read-Host "Enter hostname (default: github.com)"
@@ -128,13 +126,11 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "5" {
-
                 Show-Header -Title "TCP Port Test"
 
                 $hostname = Read-Host "Enter hostname or IP address"
 
                 if ([string]::IsNullOrWhiteSpace($hostname)) {
-
                     Write-Host ""
                     Write-Host "A hostname or IP address is required."
 
@@ -145,7 +141,6 @@ function Show-NetworkDiagnosticsMenu {
                 $portInput = Read-Host "Enter TCP port"
 
                 if ($portInput -notmatch '^\d+$') {
-
                     Write-Host ""
                     Write-Host "Invalid port number."
 
@@ -156,7 +151,6 @@ function Show-NetworkDiagnosticsMenu {
                 $port = [int]$portInput
 
                 if ($port -lt 1 -or $port -gt 65535) {
-
                     Write-Host ""
                     Write-Host "Port must be between 1 and 65535."
 
@@ -177,13 +171,11 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "6" {
-
                 Show-Header -Title "Trace Route"
 
                 $hostname = Read-Host "Enter hostname or IP address"
 
                 if ([string]::IsNullOrWhiteSpace($hostname)) {
-
                     Write-Host ""
                     Write-Host "A hostname or IP address is required."
 
@@ -204,22 +196,18 @@ function Show-NetworkDiagnosticsMenu {
                 Write-Host ""
 
                 if ($result.TraceRoute) {
-
                     Write-Host "Route:"
                     Write-Host ""
 
                     $hop = 1
 
                     foreach ($address in $result.TraceRoute) {
-
                         Write-Host ("{0,3}. {1}" -f $hop, $address)
-
                         $hop++
                     }
                 }
 
                 if ($result.Error) {
-
                     Write-Host ""
                     Write-Host "Error: $($result.Error)"
                 }
@@ -228,13 +216,11 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "7" {
-
                 Show-Header -Title "Wi-Fi Information"
 
                 $wifi = Get-ITWiFiInformation
 
                 if ($wifi.Connected) {
-
                     $wifi |
                         Select-Object `
                             Name,
@@ -249,11 +235,9 @@ function Show-NetworkDiagnosticsMenu {
                         Format-List
                 }
                 else {
-
                     Write-Host "No active Wi-Fi connection was detected."
 
                     if ($wifi.Error) {
-
                         Write-Host ""
                         Write-Host "Details: $($wifi.Error)"
                     }
@@ -267,7 +251,6 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             default {
-
                 Write-Host ""
                 Write-Host "Invalid selection."
 
@@ -297,7 +280,6 @@ function Show-WindowsDiagnosticsMenu {
         switch ($choice.ToUpper()) {
 
             "1" {
-
                 Show-Header -Title "Pending Reboot"
 
                 $result = Get-ITPendingReboot
@@ -305,11 +287,9 @@ function Show-WindowsDiagnosticsMenu {
                 Write-Host "Reboot Required : $($result.RebootRequired)"
 
                 if ($result.Reasons) {
-
                     Write-Host "Reasons         : $($result.Reasons)"
                 }
                 else {
-
                     Write-Host "Reasons         : None"
                 }
 
@@ -317,7 +297,6 @@ function Show-WindowsDiagnosticsMenu {
             }
 
             "2" {
-
                 Show-Header -Title "Service Health"
 
                 Write-Host "Checking automatic services..."
@@ -326,7 +305,6 @@ function Show-WindowsDiagnosticsMenu {
                 $services = Get-ITServiceHealth
 
                 if ($services) {
-
                     $services |
                         Format-Table `
                             Name,
@@ -336,7 +314,6 @@ function Show-WindowsDiagnosticsMenu {
                             -AutoSize
                 }
                 else {
-
                     Write-Host "No stopped automatic services were found."
                 }
 
@@ -344,13 +321,11 @@ function Show-WindowsDiagnosticsMenu {
             }
 
             "3" {
-
                 Show-Header -Title "Recent System Errors"
 
                 $hoursInput = Read-Host "Hours to check (default: 24)"
 
                 if ([string]::IsNullOrWhiteSpace($hoursInput)) {
-
                     $hours = 24
                 }
                 elseif (
@@ -358,11 +333,9 @@ function Show-WindowsDiagnosticsMenu {
                     [int]$hoursInput -ge 1 -and
                     [int]$hoursInput -le 168
                 ) {
-
                     $hours = [int]$hoursInput
                 }
                 else {
-
                     Write-Host ""
                     Write-Host "Enter a value between 1 and 168 hours."
 
@@ -378,7 +351,6 @@ function Show-WindowsDiagnosticsMenu {
                     -Hours $hours
 
                 if ($events) {
-
                     $events |
                         Format-Table `
                             TimeCreated,
@@ -392,7 +364,6 @@ function Show-WindowsDiagnosticsMenu {
                     Write-Host "Get-ITRecentSystemErrors -Hours $hours"
                 }
                 else {
-
                     Write-Host "No critical or error events were found."
                 }
 
@@ -404,7 +375,6 @@ function Show-WindowsDiagnosticsMenu {
             }
 
             default {
-
                 Write-Host ""
                 Write-Host "Invalid selection."
 
@@ -436,12 +406,10 @@ function Show-DiagnosticReportMenu {
         }
 
         if ($choice -notin @("1", "2", "3")) {
-
             Write-Host ""
             Write-Host "Invalid selection."
 
             Start-Sleep -Seconds 1
-
             continue
         }
 
@@ -467,7 +435,6 @@ function Show-DiagnosticReportMenu {
             )
 
             if (-not (Test-Path $reportDirectory)) {
-
                 New-Item `
                     -ItemType Directory `
                     -Path $reportDirectory `
@@ -486,7 +453,6 @@ function Show-DiagnosticReportMenu {
             switch ($choice) {
 
                 "1" {
-
                     Export-ITDiagnosticReportHtml `
                         -Report $report `
                         -Path $htmlPath |
@@ -501,13 +467,11 @@ function Show-DiagnosticReportMenu {
                     $openReport = Read-Host "Open the report now? (Y/N)"
 
                     if ($openReport.ToUpper() -eq "Y") {
-
                         Start-Process $htmlPath
                     }
                 }
 
                 "2" {
-
                     Export-ITDiagnosticReportText `
                         -Report $report `
                         -Path $textPath |
@@ -520,7 +484,6 @@ function Show-DiagnosticReportMenu {
                 }
 
                 "3" {
-
                     Export-ITDiagnosticReportHtml `
                         -Report $report `
                         -Path $htmlPath |
@@ -543,14 +506,12 @@ function Show-DiagnosticReportMenu {
                     $openReport = Read-Host "Open the HTML report now? (Y/N)"
 
                     if ($openReport.ToUpper() -eq "Y") {
-
                         Start-Process $htmlPath
                     }
                 }
             }
         }
         catch {
-
             Write-Host ""
             Write-Host "Unable to generate the diagnostic report."
             Write-Host ""
@@ -564,6 +525,68 @@ function Show-DiagnosticReportMenu {
 }
 
 
+function Show-SystemHealthAnalysis {
+
+    Show-Header -Title "System Health Analysis"
+
+    Write-Host "Analysing system health..."
+    Write-Host ""
+
+    try {
+
+        $health = Get-ITHealthAnalysis
+
+        Write-Host "Overall Status : $($health.OverallStatus)"
+        Write-Host ""
+        Write-Host "Healthy        : $($health.HealthyCount)"
+        Write-Host "Warnings       : $($health.WarningCount)"
+        Write-Host "Critical       : $($health.CriticalCount)"
+        Write-Host "Information    : $($health.InfoCount)"
+        Write-Host ""
+
+        Write-Host "Findings"
+        Write-Host "========"
+        Write-Host ""
+
+        foreach ($finding in $health.Findings) {
+            Write-Host "[$($finding.Severity)] $($finding.Area)"
+            Write-Host "  $($finding.Finding)"
+
+            if ($finding.Recommendation) {
+                Write-Host "  Recommendation: $($finding.Recommendation)"
+            }
+
+            Write-Host ""
+        }
+
+        $recommendations = $health.Findings |
+            Where-Object {
+                $_.Recommendation
+            }
+
+        if ($recommendations) {
+            Write-Host "Recommended Actions"
+            Write-Host "==================="
+            Write-Host ""
+
+            foreach ($item in $recommendations) {
+                Write-Host "- $($item.Recommendation)"
+            }
+
+            Write-Host ""
+        }
+    }
+    catch {
+        Write-Host "Unable to complete the system health analysis."
+        Write-Host ""
+        Write-Host "Error:"
+        Write-Host $_.Exception.Message
+    }
+
+    Wait-ITToolkit
+}
+
+
 function Show-MainMenu {
 
     do {
@@ -574,6 +597,7 @@ function Show-MainMenu {
         Write-Host "2. Network Diagnostics"
         Write-Host "3. Windows Diagnostics"
         Write-Host "4. Generate Diagnostic Report"
+        Write-Host "5. System Health Analysis"
         Write-Host ""
         Write-Host "Q. Exit"
         Write-Host ""
@@ -598,12 +622,15 @@ function Show-MainMenu {
                 Show-DiagnosticReportMenu
             }
 
+            "5" {
+                Show-SystemHealthAnalysis
+            }
+
             "Q" {
                 return
             }
 
             default {
-
                 Write-Host ""
                 Write-Host "Invalid selection."
 
