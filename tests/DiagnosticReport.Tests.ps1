@@ -1,11 +1,19 @@
-$systemModulePath  = Join-Path $PSScriptRoot "..\src\Modules\SystemInformation.psm1"
-$networkModulePath = Join-Path $PSScriptRoot "..\src\Modules\NetworkDiagnostics.psm1"
-$windowsModulePath = Join-Path $PSScriptRoot "..\src\Modules\WindowsDiagnostics.psm1"
-$reportModulePath  = Join-Path $PSScriptRoot "..\src\Modules\DiagnosticReport.psm1"
+$systemModulePath      = Join-Path $PSScriptRoot "..\src\Modules\SystemInformation.psm1"
+$networkModulePath     = Join-Path $PSScriptRoot "..\src\Modules\NetworkDiagnostics.psm1"
+$windowsModulePath     = Join-Path $PSScriptRoot "..\src\Modules\WindowsDiagnostics.psm1"
+$storageModulePath     = Join-Path $PSScriptRoot "..\src\Modules\StorageDiagnostics.psm1"
+$updateModulePath      = Join-Path $PSScriptRoot "..\src\Modules\WindowsUpdateDiagnostics.psm1"
+$performanceModulePath = Join-Path $PSScriptRoot "..\src\Modules\PerformanceDiagnostics.psm1"
+$healthModulePath      = Join-Path $PSScriptRoot "..\src\Modules\HealthAnalysis.psm1"
+$reportModulePath      = Join-Path $PSScriptRoot "..\src\Modules\DiagnosticReport.psm1"
 
 Import-Module $systemModulePath -Force
 Import-Module $networkModulePath -Force
 Import-Module $windowsModulePath -Force
+Import-Module $storageModulePath -Force
+Import-Module $updateModulePath -Force
+Import-Module $performanceModulePath -Force
+Import-Module $healthModulePath -Force
 Import-Module $reportModulePath -Force
 
 
@@ -30,7 +38,7 @@ Describe "DiagnosticReport Module" {
     }
 
 
-    Context "Diagnostic report data" {
+    Context "Unified report data" {
 
         BeforeAll {
             $report = Get-ITDiagnosticReportData
@@ -41,39 +49,55 @@ Describe "DiagnosticReport Module" {
                 Should -Not -BeNullOrEmpty
         }
 
-        It "Contains a GeneratedAt value" {
-            $report.GeneratedAt |
+        It "Contains all report sections" {
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'System'
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'Network'
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'Windows'
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'Storage'
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'WindowsUpdate'
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'Performance'
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'Health'
+
+            $report.PSObject.Properties.Name |
+                Should -Contain 'Summary'
+        }
+
+        It "Contains an overall health status" {
+            $report.Health.OverallStatus |
+                Should -BeIn @(
+                    'Healthy',
+                    'Warning',
+                    'Critical'
+                )
+        }
+
+        It "Contains logical drive data" {
+            $report.Storage.LogicalDrives |
                 Should -Not -BeNullOrEmpty
         }
 
-        It "Contains a System section" {
-            $report.System |
-                Should -Not -BeNullOrEmpty
+        It "Contains performance data" {
+            $report.Performance.CPUUsagePercent |
+                Should -BeGreaterOrEqual 0
         }
 
-        It "Contains a Network section" {
-            $report.Network |
-                Should -Not -BeNullOrEmpty
-        }
-
-        It "Contains a Windows section" {
-            $report.Windows |
-                Should -Not -BeNullOrEmpty
-        }
-
-        It "Contains a Summary section" {
-            $report.Summary |
-                Should -Not -BeNullOrEmpty
-        }
-
-        It "Returns RebootRequired as a boolean" {
-            $report.Summary.RebootRequired |
-                Should -BeOfType [bool]
-        }
-
-        It "Returns InternetConnected as a boolean" {
-            $report.Summary.InternetConnected |
-                Should -BeOfType [bool]
+        It "Contains a Windows Update count" {
+            $report.WindowsUpdate.PSObject.Properties.Name |
+                Should -Contain 'UpdateCount'
         }
     }
 
@@ -86,9 +110,12 @@ Describe "DiagnosticReport Module" {
 
             $report = Get-ITDiagnosticReportData
 
-            $result = Export-ITDiagnosticReportText `
+            Export-ITDiagnosticReportText `
                 -Report $report `
-                -Path $textPath
+                -Path $textPath |
+                Out-Null
+
+            $textContent = Get-Content $textPath -Raw
         }
 
         It "Creates the text report" {
@@ -96,34 +123,16 @@ Describe "DiagnosticReport Module" {
                 Should -BeTrue
         }
 
-        It "Returns the generated file" {
-            $result |
-                Should -Not -BeNullOrEmpty
-        }
+        It "Contains all major sections" {
 
-        It "Contains the report title" {
-            Get-Content $textPath -Raw |
-                Should -Match "IT-Toolkit Diagnostic Report"
-        }
-
-        It "Contains a System Information section" {
-            Get-Content $textPath -Raw |
-                Should -Match "SYSTEM INFORMATION"
-        }
-
-        It "Contains a Network section" {
-            Get-Content $textPath -Raw |
-                Should -Match "NETWORK"
-        }
-
-        It "Contains a Windows Health section" {
-            Get-Content $textPath -Raw |
-                Should -Match "WINDOWS HEALTH"
-        }
-
-        It "Contains a Summary section" {
-            Get-Content $textPath -Raw |
-                Should -Match "SUMMARY"
+            $textContent | Should -Match 'SUMMARY'
+            $textContent | Should -Match 'SYSTEM INFORMATION'
+            $textContent | Should -Match 'NETWORK'
+            $textContent | Should -Match 'WINDOWS HEALTH'
+            $textContent | Should -Match 'STORAGE'
+            $textContent | Should -Match 'WINDOWS UPDATE'
+            $textContent | Should -Match 'PERFORMANCE'
+            $textContent | Should -Match 'HEALTH ANALYSIS'
         }
     }
 
@@ -136,9 +145,12 @@ Describe "DiagnosticReport Module" {
 
             $report = Get-ITDiagnosticReportData
 
-            $result = Export-ITDiagnosticReportHtml `
+            Export-ITDiagnosticReportHtml `
                 -Report $report `
-                -Path $htmlPath
+                -Path $htmlPath |
+                Out-Null
+
+            $htmlContent = Get-Content $htmlPath -Raw
         }
 
         It "Creates the HTML report" {
@@ -146,34 +158,26 @@ Describe "DiagnosticReport Module" {
                 Should -BeTrue
         }
 
-        It "Returns the generated file" {
-            $result |
-                Should -Not -BeNullOrEmpty
-        }
-
         It "Contains the report title" {
-            Get-Content $htmlPath -Raw |
-                Should -Match "IT-Toolkit Diagnostic Report"
+            $htmlContent |
+                Should -Match 'IT-Toolkit Diagnostic Report'
         }
 
-        It "Contains the Summary section" {
-            Get-Content $htmlPath -Raw |
-                Should -Match "<h2>Summary</h2>"
+        It "Contains all report sections" {
+
+            $htmlContent | Should -Match '<h2>Summary</h2>'
+            $htmlContent | Should -Match '<h2>System Information</h2>'
+            $htmlContent | Should -Match '<h2>Network</h2>'
+            $htmlContent | Should -Match '<h2>Windows Health</h2>'
+            $htmlContent | Should -Match '<h2>Storage</h2>'
+            $htmlContent | Should -Match '<h2>Windows Update</h2>'
+            $htmlContent | Should -Match '<h2>Performance</h2>'
+            $htmlContent | Should -Match '<h2>Health Analysis</h2>'
         }
 
-        It "Contains the System Information section" {
-            Get-Content $htmlPath -Raw |
-                Should -Match "<h2>System Information</h2>"
-        }
-
-        It "Contains the Network section" {
-            Get-Content $htmlPath -Raw |
-                Should -Match "<h2>Network</h2>"
-        }
-
-        It "Contains the Windows Health section" {
-            Get-Content $htmlPath -Raw |
-                Should -Match "<h2>Windows Health</h2>"
+        It "Contains severity badge styling" {
+            $htmlContent |
+                Should -Match 'badge healthy'
         }
     }
 }

@@ -1,8 +1,8 @@
 # System Health Analysis
 
-System Health Analysis adds a simple interpretation layer on top of IT-Toolkit's existing diagnostic modules.
+System Health Analysis provides a severity-based interpretation layer across multiple IT-Toolkit diagnostic modules.
 
-Instead of only displaying raw information, the feature evaluates several common Windows support indicators and presents them using clear severity levels.
+Instead of only displaying raw system information, it evaluates several common Windows support indicators and presents them as structured findings with recommendations.
 
 ## Severity Levels
 
@@ -17,50 +17,153 @@ These statuses are intended as troubleshooting indicators rather than definitive
 
 ---
 
-## Checks
+## Integrated Health Areas
 
-### Internet Connectivity
+System Health Analysis currently evaluates:
 
-- Connected: `Healthy`
-- Connectivity test failed: `Critical`
+- Internet connectivity
+- DNS resolution
+- Pending reboot state
+- Storage health
+- Recent System event errors
+- Stopped automatic services
+- Windows Update status
+- CPU usage
+- Memory usage
 
-### DNS Resolution
+---
 
-- Successful: `Healthy`
-- Failed: `Critical`
+## Internet Connectivity
 
-### Pending Reboot
+- Connected → `Healthy`
+- Connectivity test failed → `Critical`
 
-- No pending reboot: `Healthy`
-- Pending reboot detected: `Warning`
+A failed test may also be caused by filtering or network policy, so the result should be interpreted in context.
 
-### System Drive Free Space
+---
 
-- 20% or more free: `Healthy`
-- 10% to 19.9% free: `Warning`
-- Less than 10% free: `Critical`
+## DNS Resolution
 
-### Recent System Errors
+- Successful → `Healthy`
+- Failed → `Critical`
 
-The current rule set checks Critical and Error events from the Windows System log over the previous 24 hours.
+Possible causes include:
 
-- 0-9 events: `Healthy`
-- 10-24 events: `Warning`
-- 25 or more events: `Critical`
+- DNS server configuration
+- Network connectivity
+- VPN configuration
+- Firewall rules
+- DNS service availability
 
-### Stopped Automatic Services
+---
+
+## Pending Reboot
+
+- No pending reboot → `Healthy`
+- Pending reboot detected → `Warning`
+
+The toolkit checks Windows reboot indicators and may recommend restarting Windows when appropriate.
+
+A pending reboot does not guarantee that restarting will resolve the issue being investigated.
+
+---
+
+## Storage Health
+
+Storage Health is now evaluated across all detected fixed logical drives.
+
+Current thresholds are:
+
+- 20% or more free → `Healthy`
+- 10% to 19.9% free → `Warning`
+- Less than 10% free → `Critical`
+
+If multiple drives are affected, the finding identifies the relevant drive letters and free-space percentages.
+
+If storage status cannot be determined, the result is reported as `Information`.
+
+---
+
+## Recent System Errors
+
+The toolkit evaluates Critical and Error entries in the Windows System event log over the previous 24 hours.
+
+Current thresholds are:
+
+- 0–9 events → `Healthy`
+- 10–24 events → `Warning`
+- 25 or more events → `Critical`
+
+Event counts alone do not prove that the events caused the issue being investigated.
+
+Repeated Event IDs and providers should be reviewed for relevance.
+
+---
+
+## Stopped Automatic Services
 
 Stopped automatic services are reported as:
 
-`Information`
+```text
+Information
+```
 
-They are not automatically treated as warnings or critical issues because some Windows and third-party services may legitimately stop when not required.
+They are not automatically treated as a fault because some Windows and third-party services may legitimately stop when not required.
+
+Where stopped automatic services are present, IT-Toolkit recommends reviewing them only where relevant to the reported issue.
+
+---
+
+## Windows Update
+
+Windows Update status is now included in Health Analysis.
+
+Current rules are:
+
+- 0 pending updates → `Healthy`
+- 1–4 pending updates → `Information`
+- 5 or more pending updates → `Warning`
+- Update status unavailable → `Information`
+
+Pending updates are not automatically treated as faults.
+
+IT-Toolkit does not automatically install updates.
+
+---
+
+## CPU Usage
+
+CPU usage is evaluated from the current performance snapshot.
+
+Current thresholds are:
+
+- Below 80% → `Healthy`
+- 80% to 94.9% → `Warning`
+- 95% or higher → `Critical`
+
+A single CPU snapshot may capture a temporary spike.
+
+High CPU findings should be compared with current process activity and observed over time where appropriate.
+
+---
+
+## Memory Usage
+
+Memory usage is also evaluated from the current performance snapshot.
+
+Current thresholds are:
+
+- Below 80% → `Healthy`
+- 80% to 89.9% → `Warning`
+- 90% or higher → `Critical`
+
+High memory usage does not automatically indicate a fault because Windows may make use of available memory for caching and active applications.
 
 ---
 
 ## Overall Status
 
-The overall status is derived from the most severe finding.
+The overall health status reflects the most severe finding.
 
 If any finding is:
 
@@ -92,11 +195,13 @@ If no Critical or Warning findings exist, the overall status is:
 Healthy
 ```
 
+`Information` findings do not raise the overall status by themselves.
+
 ---
 
 ## Using the Toolkit
 
-Launch:
+Launch IT-Toolkit:
 
 ```powershell
 .\src\Start-ITToolkit.ps1
@@ -122,7 +227,7 @@ The toolkit displays:
 
 ## PowerShell Usage
 
-Import the required modules and run:
+Run:
 
 ```powershell
 Get-ITHealthAnalysis
@@ -132,41 +237,62 @@ Example:
 
 ```text
 OverallStatus : Warning
-HealthyCount  : 3
+HealthyCount  : 5
 WarningCount  : 2
 CriticalCount : 0
-InfoCount     : 1
+InfoCount     : 2
 ```
 
-Inspect the findings:
+Inspect findings:
 
 ```powershell
 $health = Get-ITHealthAnalysis
 
 $health.Findings |
-    Format-Table Area, Severity, Finding -AutoSize
+    Format-Table Area, Severity, Finding -AutoSize -Wrap
 ```
 
 ---
 
-## Interpretation
+## Current Health Areas
 
-Health Analysis is intended to assist troubleshooting, not replace technical investigation.
+| Area | Purpose |
+| --- | --- |
+| Internet | External connectivity status |
+| DNS | Name-resolution status |
+| Windows | Pending reboot state |
+| Storage | Free-space health across fixed drives |
+| Event Logs | Recent System Critical/Error count |
+| Services | Stopped automatic-service information |
+| Windows Update | Pending update status |
+| CPU | Current CPU utilisation |
+| Memory | Current memory utilisation |
 
-For example:
+---
 
-- Event Log errors may be unrelated to the current issue.
-- A pending reboot does not guarantee that restarting will resolve a problem.
-- A stopped automatic service may be expected behaviour.
-- Connectivity failures may be caused by filtering rather than a broken connection.
+## Recommendations
 
-Results should always be interpreted in context.
+Findings may include recommended troubleshooting actions.
+
+Examples include:
+
+- Check gateway and upstream connectivity
+- Review DNS configuration
+- Restart Windows when appropriate
+- Free disk space
+- Review repeated System Event IDs
+- Review stopped services where relevant
+- Review pending Windows updates
+- Investigate sustained CPU usage
+- Investigate high-memory processes
+
+Recommendations are guidance only and do not perform automatic remediation.
 
 ---
 
 ## Testing
 
-The module has a dedicated Pester test suite:
+The Health Analysis module has a dedicated Pester test suite:
 
 ```text
 tests/HealthAnalysis.Tests.ps1
@@ -178,7 +304,7 @@ Run it with:
 Invoke-Pester .\tests\HealthAnalysis.Tests.ps1 -Output Detailed
 ```
 
-Run all project tests with:
+Run the complete project suite with:
 
 ```powershell
 Invoke-Pester .\tests -Output Detailed
@@ -192,6 +318,31 @@ Health Analysis runs locally.
 
 It does not automatically upload diagnostic results to the project maintainer.
 
-The analysis may process local system, network, service, storage, and Windows Event Log information.
+The analysis may process:
+
+- System information
+- Network information
+- Storage information
+- Windows Update information
+- Service information
+- Process and performance information
+- Windows Event Log information
 
 Review output before sharing it externally.
+
+---
+
+## Security
+
+System Health Analysis is currently diagnostic and read-only.
+
+It does not automatically:
+
+- Restart Windows
+- Install updates
+- Stop services
+- Terminate processes
+- Delete files
+- Modify storage configuration
+
+IT-Toolkit should only be used on systems you own or are authorised to administer.

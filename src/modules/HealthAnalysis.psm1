@@ -9,6 +9,10 @@ function Get-ITHealthAnalysis {
     $serviceHealth = Get-ITServiceHealth
     $recentErrors = Get-ITRecentSystemErrors -Hours 24 -MaxEvents 500
 
+    $storageHealth = Get-ITStorageHealth
+    $updateStatus = Get-ITWindowsUpdateStatus
+    $performance = Get-ITPerformanceSnapshot
+
     $findings = @()
 
 
@@ -82,34 +86,65 @@ function Get-ITHealthAnalysis {
     }
 
 
-    # System drive space
-    $freePercent = [double]$systemInfo.DriveFreePercent
+    # Storage health across all fixed drives
+    $criticalDrives = @(
+        $storageHealth |
+            Where-Object {
+                $_.Status -eq 'Critical'
+            }
+    )
 
-    if ($freePercent -lt 10) {
+    $warningDrives = @(
+        $storageHealth |
+            Where-Object {
+                $_.Status -eq 'Warning'
+            }
+    )
+
+    if ($criticalDrives.Count -gt 0) {
+
+        $driveDetails = $criticalDrives |
+            ForEach-Object {
+                "$($_.Drive) ($($_.FreePercent)% free)"
+            }
 
         $findings += [PSCustomObject]@{
             Area           = 'Storage'
             Severity       = 'Critical'
-            Finding        = "System drive has only $freePercent% free space"
+            Finding        = "Critical free-space condition detected on: $($driveDetails -join ', ')"
             Recommendation = 'Free disk space as soon as possible and investigate large files, temporary data, and unused software.'
         }
     }
-    elseif ($freePercent -lt 20) {
+    elseif ($warningDrives.Count -gt 0) {
+
+        $driveDetails = $warningDrives |
+            ForEach-Object {
+                "$($_.Drive) ($($_.FreePercent)% free)"
+            }
 
         $findings += [PSCustomObject]@{
             Area           = 'Storage'
             Severity       = 'Warning'
-            Finding        = "System drive has $freePercent% free space"
+            Finding        = "Low free space detected on: $($driveDetails -join ', ')"
             Recommendation = 'Review disk usage and consider freeing additional space.'
+        }
+    }
+    elseif (@($storageHealth).Count -gt 0) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Storage'
+            Severity       = 'Healthy'
+            Finding        = 'All fixed drives have at least 20% free space'
+            Recommendation = $null
         }
     }
     else {
 
         $findings += [PSCustomObject]@{
             Area           = 'Storage'
-            Severity       = 'Healthy'
-            Finding        = "System drive has $freePercent% free space"
-            Recommendation = $null
+            Severity       = 'Information'
+            Finding        = 'Storage health could not be determined'
+            Recommendation = 'Review storage information manually if disk capacity is relevant to the issue.'
         }
     }
 
@@ -162,14 +197,120 @@ function Get-ITHealthAnalysis {
     }
 
 
+    # Windows Update
+    if ($updateStatus.Error) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Windows Update'
+            Severity       = 'Information'
+            Finding        = 'Windows Update status could not be determined'
+            Recommendation = 'Review Windows Update manually if update status is relevant to the issue.'
+        }
+    }
+    elseif ($updateStatus.UpdateCount -ge 5) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Windows Update'
+            Severity       = 'Warning'
+            Finding        = "$($updateStatus.UpdateCount) pending software updates detected"
+            Recommendation = 'Review and apply appropriate Windows updates when suitable.'
+        }
+    }
+    elseif ($updateStatus.UpdateCount -gt 0) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Windows Update'
+            Severity       = 'Information'
+            Finding        = "$($updateStatus.UpdateCount) pending software update(s) detected"
+            Recommendation = 'Review available updates where relevant.'
+        }
+    }
+    else {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Windows Update'
+            Severity       = 'Healthy'
+            Finding        = 'No pending software updates detected'
+            Recommendation = $null
+        }
+    }
+
+
+    # CPU usage
+    $cpuUsage = [double]$performance.CPUUsagePercent
+
+    if ($cpuUsage -ge 95) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'CPU'
+            Severity       = 'Critical'
+            Finding        = "CPU usage is $cpuUsage%"
+            Recommendation = 'Identify processes consuming significant CPU and determine whether the load is expected.'
+        }
+    }
+    elseif ($cpuUsage -ge 80) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'CPU'
+            Severity       = 'Warning'
+            Finding        = "CPU usage is $cpuUsage%"
+            Recommendation = 'Review running processes and monitor whether high CPU usage persists.'
+        }
+    }
+    else {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'CPU'
+            Severity       = 'Healthy'
+            Finding        = "CPU usage is $cpuUsage%"
+            Recommendation = $null
+        }
+    }
+
+
+    # Memory usage
+    $memoryUsage = [double]$performance.MemoryUsedPercent
+
+    if ($memoryUsage -ge 90) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Memory'
+            Severity       = 'Critical'
+            Finding        = "Memory usage is $memoryUsage%"
+            Recommendation = 'Review high-memory processes and investigate sustained memory pressure.'
+        }
+    }
+    elseif ($memoryUsage -ge 80) {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Memory'
+            Severity       = 'Warning'
+            Finding        = "Memory usage is $memoryUsage%"
+            Recommendation = 'Review memory consumers and monitor whether high usage persists.'
+        }
+    }
+    else {
+
+        $findings += [PSCustomObject]@{
+            Area           = 'Memory'
+            Severity       = 'Healthy'
+            Finding        = "Memory usage is $memoryUsage%"
+            Recommendation = $null
+        }
+    }
+
+
     # Overall status
     $overallStatus = if ($findings.Severity -contains 'Critical') {
+
         'Critical'
     }
     elseif ($findings.Severity -contains 'Warning') {
+
         'Warning'
     }
     else {
+
         'Healthy'
     }
 
@@ -177,11 +318,36 @@ function Get-ITHealthAnalysis {
     [PSCustomObject]@{
         GeneratedAt   = Get-Date
         OverallStatus = $overallStatus
-        HealthyCount  = @($findings | Where-Object Severity -eq 'Healthy').Count
-        WarningCount  = @($findings | Where-Object Severity -eq 'Warning').Count
-        CriticalCount = @($findings | Where-Object Severity -eq 'Critical').Count
-        InfoCount     = @($findings | Where-Object Severity -eq 'Information').Count
-        Findings      = $findings
+
+        HealthyCount = @(
+            $findings |
+                Where-Object {
+                    $_.Severity -eq 'Healthy'
+                }
+        ).Count
+
+        WarningCount = @(
+            $findings |
+                Where-Object {
+                    $_.Severity -eq 'Warning'
+                }
+        ).Count
+
+        CriticalCount = @(
+            $findings |
+                Where-Object {
+                    $_.Severity -eq 'Critical'
+                }
+        ).Count
+
+        InfoCount = @(
+            $findings |
+                Where-Object {
+                    $_.Severity -eq 'Information'
+                }
+        ).Count
+
+        Findings = $findings
     }
 }
 

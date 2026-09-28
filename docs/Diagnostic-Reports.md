@@ -1,75 +1,60 @@
 # Diagnostic Reports
 
-The Diagnostic Reports feature combines information from multiple IT-Toolkit modules into a single troubleshooting report.
+Diagnostic Reports combine information from multiple IT-Toolkit modules into a single troubleshooting report.
 
-It is designed to give IT technicians a quick, portable overview of a Windows computer without manually collecting information from several different toolkit sections.
+The reporting system is designed to provide a portable overview of Windows system health without requiring technicians to manually collect data from each diagnostic section.
 
-## Features
+## Report Formats
 
-Diagnostic Reports currently include information from:
+IT-Toolkit can generate:
 
-- System Information
-- Network Diagnostics
-- Windows Diagnostics
+- HTML reports
+- Plain-text reports
+- Both formats in one operation
 
-Reports can be exported as:
-
-- HTML
-- Plain text
-- Both formats
-
----
-
-## Using the Toolkit
-
-Launch IT-Toolkit:
-
-```powershell
-.\src\Start-ITToolkit.ps1
-```
-
-From the main menu select:
-
-```text
-4. Generate Diagnostic Report
-```
-
-The report menu provides:
-
-```text
-1. Generate HTML report
-2. Generate text report
-3. Generate both
-
-B. Back
-```
-
-Generated reports are stored in:
+Generated reports are stored under:
 
 ```text
 reports/
 ```
 
-The `reports` directory is excluded from Git tracking so locally generated diagnostic reports are not automatically committed to the repository.
+The `reports/` directory should remain excluded from Git tracking.
 
 ---
 
-## Report Contents
+## Integrated Report Sections
 
-The report currently contains four main sections.
+Diagnostic Reports now include:
 
-### Summary
+- Summary
+- System Information
+- Network
+- Windows Health
+- Storage
+- Windows Update
+- Performance
+- Health Analysis
 
-Provides a quick overview of:
+---
 
+## Summary
+
+The Summary section provides a quick overview of:
+
+- Overall health
 - Internet connectivity
 - DNS status
 - Pending reboot state
-- Free disk space
+- System drive free space
+- Pending Windows Update count
+- CPU usage
+- Memory usage
 - Stopped automatic service count
-- Recent System event error count
+- Recent System error count
 
-### System Information
+---
+
+## System Information
 
 Includes:
 
@@ -80,15 +65,21 @@ Includes:
 - Operating system
 - OS version
 - Architecture
-- System uptime
+- Uptime
 - Processor
-- Memory usage
-- System drive usage
+- Total memory
+- Used memory
+- Free memory
+- System drive
+- Drive capacity
+- Free disk space
 - Current user
 - PowerShell version
 - Administrator status
 
-### Network
+---
+
+## Network
 
 Includes:
 
@@ -100,58 +91,171 @@ Includes:
 - MAC address
 - Link speed
 - Internet connectivity
+- Connectivity-test target
 - DNS resolution status
+- DNS test target
+- Resolved addresses
 
-### Windows Health
+---
+
+## Windows Health
 
 Includes:
 
 - Pending reboot status
 - Pending reboot reasons
-- Stopped automatic services
-- Recent Critical and Error events from the Windows System log
+- Stopped automatic service count
+- Stopped automatic service details
+- Recent System Critical/Error count
+- Recent System event details
 
 ---
 
-## HTML Reports
+## Storage
 
-HTML reports provide a formatted browser-based view of diagnostic information.
+The Storage section includes logical-drive and physical-disk information.
 
-Example:
+### Logical Drives
+
+Includes:
+
+- Drive letter
+- Volume name
+- File system
+- Size
+- Free space
+- Free-space percentage
+- Health status
+
+Storage health statuses use:
+
+- `Healthy`
+- `Warning`
+- `Critical`
+
+### Physical Disks
+
+Includes:
+
+- Friendly name
+- Media type
+- Bus type
+- Size
+- Health status
+- Operational status
+
+Physical disk information depends on what Windows and the storage controller expose.
+
+---
+
+## Windows Update
+
+Includes:
+
+- Pending software update count
+- Update title
+- KB information
+- Severity where available
+- Reboot requirement
+- Error information if update status cannot be determined
+
+IT-Toolkit does not automatically install updates.
+
+---
+
+## Performance
+
+Includes:
+
+- CPU usage
+- Memory usage
+- Total memory
+- Used memory
+- Free memory
+- Uptime
+- Top CPU processes
+- Top memory processes
+
+### Top CPU Processes
+
+CPU values represent accumulated processor time rather than live CPU percentage.
+
+### Top Memory Processes
+
+Memory values are based on process working-set memory.
+
+---
+
+## Health Analysis
+
+The report now includes the integrated System Health Analysis result.
+
+It displays:
+
+- Overall status
+- Healthy count
+- Warning count
+- Critical count
+- Information count
+- Area
+- Severity
+- Finding
+- Recommendation
+
+HTML reports use visual severity badges for:
+
+- Healthy
+- Information
+- Warning
+- Critical
+
+---
+
+## Using the Toolkit
+
+Launch:
+
+```powershell
+.\src\Start-ITToolkit.ps1
+```
+
+Select:
+
+```text
+4. Generate Diagnostic Report
+```
+
+Then choose:
+
+```text
+1. Generate HTML report
+2. Generate text report
+3. Generate both
+
+B. Back
+```
+
+---
+
+## PowerShell Usage
+
+Collect the report data:
 
 ```powershell
 $report = Get-ITDiagnosticReportData
+```
 
+Generate HTML:
+
+```powershell
 Export-ITDiagnosticReportHtml `
     -Report $report `
     -Path ".\reports\diagnostic-report.html"
 ```
 
-Open the report:
+Generate plain text:
 
 ```powershell
-Start-Process ".\reports\diagnostic-report.html"
-```
-
-Dynamic report values are HTML encoded before being inserted into the report.
-
----
-
-## Text Reports
-
-Plain-text reports are useful for:
-
-- Support tickets
-- Email attachments
-- Notes
-- Command-line environments
-- Simple archiving
-
-Example:
-
-```powershell
-$report = Get-ITDiagnosticReportData
-
 Export-ITDiagnosticReportText `
     -Report $report `
     -Path ".\reports\diagnostic-report.txt"
@@ -163,22 +267,56 @@ Export-ITDiagnosticReportText `
 
 | Function | Description |
 | --- | --- |
-| `Get-ITDiagnosticReportData` | Collects information from the toolkit's diagnostic modules |
-| `Export-ITDiagnosticReportHtml` | Generates an HTML diagnostic report |
-| `Export-ITDiagnosticReportText` | Generates a plain-text diagnostic report |
+| `Get-ITDiagnosticReportData` | Collects unified diagnostic data |
+| `Export-ITDiagnosticReportHtml` | Generates the HTML report |
+| `Export-ITDiagnosticReportText` | Generates the plain-text report |
 
 ---
 
-## Requirements
+## HTML Reports
 
-Diagnostic Reports require:
+HTML reports provide:
 
-- Windows 10 or Windows 11
-- Windows PowerShell 5.1 or later
-- Access to the underlying IT-Toolkit diagnostic modules
-- Permission to read the Windows information used by those modules
+- Structured sections
+- Tables
+- Overall health banner
+- Severity badges
+- Logical-drive status
+- Update details
+- Process information
+- Health findings and recommendations
 
-Some diagnostics may require network connectivity.
+Dynamic diagnostic values are HTML encoded before being inserted into the report.
+
+---
+
+## Text Reports
+
+Plain-text reports provide the same main diagnostic sections in a portable format suitable for:
+
+- Support tickets
+- Notes
+- Email attachments
+- Command-line environments
+- Troubleshooting archives
+
+---
+
+## Performance
+
+Unified reports perform more checks than earlier report versions.
+
+Generating a report may take longer because it can query:
+
+- Windows Update
+- Event Logs
+- Storage
+- Physical disks
+- Processes
+- Performance information
+- Network connectivity
+
+This is expected.
 
 ---
 
@@ -196,42 +334,56 @@ Run it with:
 Invoke-Pester .\tests\DiagnosticReport.Tests.ps1 -Output Detailed
 ```
 
-Run the complete project test suite with:
+Run all tests:
 
 ```powershell
 Invoke-Pester .\tests -Output Detailed
 ```
 
-GitHub Actions also runs the project's Pester tests automatically for repository changes.
+GitHub Actions also executes the project's automated test suite.
 
 ---
 
 ## Privacy
 
-Diagnostic reports can contain information about the computer and network on which they are generated.
+Diagnostic reports are generated locally.
 
-This may include:
+They are not automatically uploaded to the project maintainer.
 
-- Computer name
-- Username
-- Serial number
+Reports may contain:
+
+- Computer names
+- Usernames
+- Serial numbers
 - IP addresses
 - MAC addresses
 - DNS servers
-- Network gateway
+- Network gateways
+- Disk information
+- Update information
+- Process names
+- Process IDs
+- Application paths
 - Service information
-- Windows Event Log information
+- Event Log information
 
-Reports are generated locally and are not automatically uploaded to the project maintainer.
-
-Review reports before sharing them externally.
+Review every report before sharing it externally.
 
 ---
 
 ## Security
 
-Do not commit generated diagnostic reports to the public IT-Toolkit repository.
+Generated reports should not be committed to the public repository.
 
-The `reports/` directory should remain excluded through `.gitignore`.
+The `reports/` directory should remain ignored through `.gitignore`.
+
+Diagnostic Reports are read-only and do not automatically:
+
+- Install updates
+- Stop services
+- Terminate processes
+- Delete files
+- Modify network configuration
+- Change storage configuration
 
 IT-Toolkit should only be used on systems and networks you own or are authorised to administer.
