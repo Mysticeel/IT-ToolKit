@@ -1,10 +1,11 @@
-$systemModulePath  = Join-Path $PSScriptRoot "Modules\SystemInformation.psm1"
-$networkModulePath = Join-Path $PSScriptRoot "Modules\NetworkDiagnostics.psm1"
-$windowsModulePath = Join-Path $PSScriptRoot "Modules\WindowsDiagnostics.psm1"
-$reportModulePath  = Join-Path $PSScriptRoot "Modules\DiagnosticReport.psm1"
-$healthModulePath  = Join-Path $PSScriptRoot "Modules\HealthAnalysis.psm1"
-$storageModulePath = Join-Path $PSScriptRoot "Modules\StorageDiagnostics.psm1"
-$updateModulePath  = Join-Path $PSScriptRoot "Modules\WindowsUpdateDiagnostics.psm1"
+$systemModulePath      = Join-Path $PSScriptRoot "Modules\SystemInformation.psm1"
+$networkModulePath     = Join-Path $PSScriptRoot "Modules\NetworkDiagnostics.psm1"
+$windowsModulePath     = Join-Path $PSScriptRoot "Modules\WindowsDiagnostics.psm1"
+$reportModulePath      = Join-Path $PSScriptRoot "Modules\DiagnosticReport.psm1"
+$healthModulePath      = Join-Path $PSScriptRoot "Modules\HealthAnalysis.psm1"
+$storageModulePath     = Join-Path $PSScriptRoot "Modules\StorageDiagnostics.psm1"
+$updateModulePath      = Join-Path $PSScriptRoot "Modules\WindowsUpdateDiagnostics.psm1"
+$performanceModulePath = Join-Path $PSScriptRoot "Modules\PerformanceDiagnostics.psm1"
 
 Import-Module $systemModulePath -Force
 Import-Module $networkModulePath -Force
@@ -13,6 +14,7 @@ Import-Module $reportModulePath -Force
 Import-Module $healthModulePath -Force
 Import-Module $storageModulePath -Force
 Import-Module $updateModulePath -Force
+Import-Module $performanceModulePath -Force
 
 
 function Wait-ITToolkit {
@@ -75,6 +77,7 @@ function Show-NetworkDiagnosticsMenu {
         switch ($choice.ToUpper()) {
 
             "1" {
+
                 Show-Header -Title "Network Adapters"
 
                 Write-Host "Active physical network adapters"
@@ -87,6 +90,7 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "2" {
+
                 Show-Header -Title "All Network Adapters"
 
                 Write-Host "Active physical and virtual network adapters"
@@ -99,6 +103,7 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "3" {
+
                 Show-Header -Title "Internet Connectivity"
 
                 Write-Host "Testing internet connectivity..."
@@ -111,6 +116,7 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "4" {
+
                 Show-Header -Title "DNS Resolution"
 
                 $hostname = Read-Host "Enter hostname (default: github.com)"
@@ -130,11 +136,13 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "5" {
+
                 Show-Header -Title "TCP Port Test"
 
                 $hostname = Read-Host "Enter hostname or IP address"
 
                 if ([string]::IsNullOrWhiteSpace($hostname)) {
+
                     Write-Host ""
                     Write-Host "A hostname or IP address is required."
 
@@ -145,6 +153,7 @@ function Show-NetworkDiagnosticsMenu {
                 $portInput = Read-Host "Enter TCP port"
 
                 if ($portInput -notmatch '^\d+$') {
+
                     Write-Host ""
                     Write-Host "Invalid port number."
 
@@ -155,6 +164,7 @@ function Show-NetworkDiagnosticsMenu {
                 $port = [int]$portInput
 
                 if ($port -lt 1 -or $port -gt 65535) {
+
                     Write-Host ""
                     Write-Host "Port must be between 1 and 65535."
 
@@ -175,11 +185,13 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "6" {
+
                 Show-Header -Title "Trace Route"
 
                 $hostname = Read-Host "Enter hostname or IP address"
 
                 if ([string]::IsNullOrWhiteSpace($hostname)) {
+
                     Write-Host ""
                     Write-Host "A hostname or IP address is required."
 
@@ -200,18 +212,22 @@ function Show-NetworkDiagnosticsMenu {
                 Write-Host ""
 
                 if ($result.TraceRoute) {
+
                     Write-Host "Route:"
                     Write-Host ""
 
                     $hop = 1
 
                     foreach ($address in $result.TraceRoute) {
+
                         Write-Host ("{0,3}. {1}" -f $hop, $address)
+
                         $hop++
                     }
                 }
 
                 if ($result.Error) {
+
                     Write-Host ""
                     Write-Host "Error: $($result.Error)"
                 }
@@ -220,11 +236,13 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             "7" {
+
                 Show-Header -Title "Wi-Fi Information"
 
                 $wifi = Get-ITWiFiInformation
 
                 if ($wifi.Connected) {
+
                     $wifi |
                         Select-Object `
                             Name,
@@ -239,9 +257,11 @@ function Show-NetworkDiagnosticsMenu {
                         Format-List
                 }
                 else {
+
                     Write-Host "No active Wi-Fi connection was detected."
 
                     if ($wifi.Error) {
+
                         Write-Host ""
                         Write-Host "Details: $($wifi.Error)"
                     }
@@ -255,8 +275,10 @@ function Show-NetworkDiagnosticsMenu {
             }
 
             default {
+
                 Write-Host ""
                 Write-Host "Invalid selection."
+
                 Start-Sleep -Seconds 1
             }
         }
@@ -283,6 +305,7 @@ function Show-WindowsDiagnosticsMenu {
         switch ($choice.ToUpper()) {
 
             "1" {
+
                 Show-Header -Title "Pending Reboot"
 
                 $result = Get-ITPendingReboot
@@ -300,6 +323,7 @@ function Show-WindowsDiagnosticsMenu {
             }
 
             "2" {
+
                 Show-Header -Title "Service Health"
 
                 Write-Host "Checking automatic services..."
@@ -308,6 +332,7 @@ function Show-WindowsDiagnosticsMenu {
                 $services = Get-ITServiceHealth
 
                 if ($services) {
+
                     $services |
                         Format-Table `
                             Name,
@@ -317,6 +342,7 @@ function Show-WindowsDiagnosticsMenu {
                             -AutoSize
                 }
                 else {
+
                     Write-Host "No stopped automatic services were found."
                 }
 
@@ -324,11 +350,13 @@ function Show-WindowsDiagnosticsMenu {
             }
 
             "3" {
+
                 Show-Header -Title "Recent System Errors"
 
                 $hoursInput = Read-Host "Hours to check (default: 24)"
 
                 if ([string]::IsNullOrWhiteSpace($hoursInput)) {
+
                     $hours = 24
                 }
                 elseif (
@@ -336,9 +364,11 @@ function Show-WindowsDiagnosticsMenu {
                     [int]$hoursInput -ge 1 -and
                     [int]$hoursInput -le 168
                 ) {
+
                     $hours = [int]$hoursInput
                 }
                 else {
+
                     Write-Host ""
                     Write-Host "Enter a value between 1 and 168 hours."
 
@@ -354,6 +384,7 @@ function Show-WindowsDiagnosticsMenu {
                     -Hours $hours
 
                 if ($events) {
+
                     $events |
                         Format-Table `
                             TimeCreated,
@@ -367,6 +398,7 @@ function Show-WindowsDiagnosticsMenu {
                     Write-Host "Get-ITRecentSystemErrors -Hours $hours"
                 }
                 else {
+
                     Write-Host "No critical or error events were found."
                 }
 
@@ -378,8 +410,10 @@ function Show-WindowsDiagnosticsMenu {
             }
 
             default {
+
                 Write-Host ""
                 Write-Host "Invalid selection."
+
                 Start-Sleep -Seconds 1
             }
         }
@@ -408,9 +442,12 @@ function Show-DiagnosticReportMenu {
         }
 
         if ($choice -notin @("1", "2", "3")) {
+
             Write-Host ""
             Write-Host "Invalid selection."
+
             Start-Sleep -Seconds 1
+
             continue
         }
 
@@ -436,6 +473,7 @@ function Show-DiagnosticReportMenu {
             )
 
             if (-not (Test-Path $reportDirectory)) {
+
                 New-Item `
                     -ItemType Directory `
                     -Path $reportDirectory `
@@ -454,6 +492,7 @@ function Show-DiagnosticReportMenu {
             switch ($choice) {
 
                 "1" {
+
                     Export-ITDiagnosticReportHtml `
                         -Report $report `
                         -Path $htmlPath |
@@ -473,6 +512,7 @@ function Show-DiagnosticReportMenu {
                 }
 
                 "2" {
+
                     Export-ITDiagnosticReportText `
                         -Report $report `
                         -Path $textPath |
@@ -485,6 +525,7 @@ function Show-DiagnosticReportMenu {
                 }
 
                 "3" {
+
                     Export-ITDiagnosticReportHtml `
                         -Report $report `
                         -Path $htmlPath |
@@ -513,6 +554,7 @@ function Show-DiagnosticReportMenu {
             }
         }
         catch {
+
             Write-Host ""
             Write-Host "Unable to generate the diagnostic report."
             Write-Host ""
@@ -550,6 +592,7 @@ function Show-SystemHealthAnalysis {
         Write-Host ""
 
         foreach ($finding in $health.Findings) {
+
             Write-Host "[$($finding.Severity)] $($finding.Area)"
             Write-Host "  $($finding.Finding)"
 
@@ -566,6 +609,7 @@ function Show-SystemHealthAnalysis {
             }
 
         if ($recommendations) {
+
             Write-Host "Recommended Actions"
             Write-Host "==================="
             Write-Host ""
@@ -578,6 +622,7 @@ function Show-SystemHealthAnalysis {
         }
     }
     catch {
+
         Write-Host "Unable to complete the system health analysis."
         Write-Host ""
         Write-Host "Error:"
@@ -605,6 +650,7 @@ function Show-StorageDiagnosticsMenu {
         switch ($choice.ToUpper()) {
 
             "1" {
+
                 Show-Header -Title "Logical Drive Health"
 
                 Write-Host "Checking logical drives..."
@@ -613,6 +659,7 @@ function Show-StorageDiagnosticsMenu {
                 $volumes = Get-ITStorageHealth
 
                 if ($volumes) {
+
                     $volumes |
                         Format-Table `
                             Drive,
@@ -625,6 +672,7 @@ function Show-StorageDiagnosticsMenu {
                             -AutoSize
                 }
                 else {
+
                     Write-Host "No fixed logical drives were found."
                 }
 
@@ -632,6 +680,7 @@ function Show-StorageDiagnosticsMenu {
             }
 
             "2" {
+
                 Show-Header -Title "Physical Disk Health"
 
                 Write-Host "Checking physical disks..."
@@ -640,6 +689,7 @@ function Show-StorageDiagnosticsMenu {
                 $disks = Get-ITPhysicalDiskHealth
 
                 if ($disks) {
+
                     $disks |
                         Format-Table `
                             FriendlyName,
@@ -651,6 +701,7 @@ function Show-StorageDiagnosticsMenu {
                             -AutoSize
                 }
                 else {
+
                     Write-Host "No physical disk information was returned."
                 }
 
@@ -662,8 +713,10 @@ function Show-StorageDiagnosticsMenu {
             }
 
             default {
+
                 Write-Host ""
                 Write-Host "Invalid selection."
+
                 Start-Sleep -Seconds 1
             }
         }
@@ -689,6 +742,7 @@ function Show-WindowsUpdateDiagnosticsMenu {
         switch ($choice.ToUpper()) {
 
             "1" {
+
                 Show-Header -Title "Available Windows Updates"
 
                 Write-Host "Checking for available updates..."
@@ -699,15 +753,18 @@ function Show-WindowsUpdateDiagnosticsMenu {
                 $result = Get-ITWindowsUpdateStatus
 
                 if ($result.Error) {
+
                     Write-Host "Unable to retrieve update information."
                     Write-Host ""
                     Write-Host "Error:"
                     Write-Host $result.Error
                 }
                 elseif ($result.UpdateCount -eq 0) {
+
                     Write-Host "No pending software updates were found."
                 }
                 else {
+
                     Write-Host "Updates found: $($result.UpdateCount)"
                     Write-Host ""
 
@@ -724,6 +781,7 @@ function Show-WindowsUpdateDiagnosticsMenu {
             }
 
             "2" {
+
                 Show-Header -Title "Windows Update History"
 
                 Write-Host "Retrieving Windows Update history..."
@@ -732,6 +790,7 @@ function Show-WindowsUpdateDiagnosticsMenu {
                 $history = Get-ITWindowsUpdateHistory
 
                 if ($history) {
+
                     $history |
                         Format-Table `
                             Date,
@@ -741,6 +800,7 @@ function Show-WindowsUpdateDiagnosticsMenu {
                             -AutoSize
                 }
                 else {
+
                     Write-Host "No Windows Update history was returned."
                 }
 
@@ -752,8 +812,174 @@ function Show-WindowsUpdateDiagnosticsMenu {
             }
 
             default {
+
                 Write-Host ""
                 Write-Host "Invalid selection."
+
+                Start-Sleep -Seconds 1
+            }
+        }
+
+    } while ($true)
+}
+
+
+function Show-PerformanceDiagnosticsMenu {
+
+    do {
+
+        Show-Header -Title "Performance Diagnostics"
+
+        Write-Host "1. Performance snapshot"
+        Write-Host "2. Top CPU processes"
+        Write-Host "3. Top memory processes"
+        Write-Host "4. Startup items"
+        Write-Host ""
+        Write-Host "B. Back"
+        Write-Host ""
+
+        $choice = Read-Host "Select an option"
+
+        switch ($choice.ToUpper()) {
+
+            "1" {
+
+                Show-Header -Title "Performance Snapshot"
+
+                Write-Host "Collecting current performance information..."
+                Write-Host ""
+
+                Get-ITPerformanceSnapshot |
+                    Format-List
+
+                Wait-ITToolkit
+            }
+
+            "2" {
+
+                Show-Header -Title "Top CPU Processes"
+
+                $topInput = Read-Host "Number of processes to show (default: 10)"
+
+                if ([string]::IsNullOrWhiteSpace($topInput)) {
+
+                    $top = 10
+                }
+                elseif (
+                    $topInput -match '^\d+$' -and
+                    [int]$topInput -ge 1 -and
+                    [int]$topInput -le 50
+                ) {
+
+                    $top = [int]$topInput
+                }
+                else {
+
+                    Write-Host ""
+                    Write-Host "Enter a value between 1 and 50."
+
+                    Wait-ITToolkit
+                    continue
+                }
+
+                Write-Host ""
+                Write-Host "Top $top processes by accumulated CPU time"
+                Write-Host ""
+
+                Get-ITTopProcesses -Top $top |
+                    Format-Table `
+                        ProcessName,
+                        Id,
+                        CPU,
+                        WorkingSet64,
+                        Handles `
+                        -AutoSize
+
+                Write-Host ""
+                Write-Host "Note: CPU represents accumulated processor time, not live CPU percentage."
+
+                Wait-ITToolkit
+            }
+
+            "3" {
+
+                Show-Header -Title "Top Memory Processes"
+
+                $topInput = Read-Host "Number of processes to show (default: 10)"
+
+                if ([string]::IsNullOrWhiteSpace($topInput)) {
+
+                    $top = 10
+                }
+                elseif (
+                    $topInput -match '^\d+$' -and
+                    [int]$topInput -ge 1 -and
+                    [int]$topInput -le 50
+                ) {
+
+                    $top = [int]$topInput
+                }
+                else {
+
+                    Write-Host ""
+                    Write-Host "Enter a value between 1 and 50."
+
+                    Wait-ITToolkit
+                    continue
+                }
+
+                Write-Host ""
+                Write-Host "Top $top processes by working-set memory"
+                Write-Host ""
+
+                Get-ITMemoryConsumers -Top $top |
+                    Format-Table `
+                        ProcessName,
+                        Id,
+                        MemoryMB,
+                        Handles `
+                        -AutoSize
+
+                Wait-ITToolkit
+            }
+
+            "4" {
+
+                Show-Header -Title "Startup Items"
+
+                Write-Host "Collecting startup items..."
+                Write-Host ""
+
+                $items = Get-ITStartupItems
+
+                if ($items) {
+
+                    $items |
+                        Format-Table `
+                            Name,
+                            Command,
+                            Location,
+                            User `
+                            -AutoSize `
+                            -Wrap
+                }
+                else {
+
+                    Write-Host "No startup items were returned."
+                }
+
+                Wait-ITToolkit
+            }
+
+            "B" {
+                return
+            }
+
+            default {
+
+                Write-Host ""
+                Write-Host "Invalid selection."
+
                 Start-Sleep -Seconds 1
             }
         }
@@ -775,6 +1001,7 @@ function Show-MainMenu {
         Write-Host "5. System Health Analysis"
         Write-Host "6. Storage Diagnostics"
         Write-Host "7. Windows Update Diagnostics"
+        Write-Host "8. Performance Diagnostics"
         Write-Host ""
         Write-Host "Q. Exit"
         Write-Host ""
@@ -811,13 +1038,19 @@ function Show-MainMenu {
                 Show-WindowsUpdateDiagnosticsMenu
             }
 
+            "8" {
+                Show-PerformanceDiagnosticsMenu
+            }
+
             "Q" {
                 return
             }
 
             default {
+
                 Write-Host ""
                 Write-Host "Invalid selection."
+
                 Start-Sleep -Seconds 1
             }
         }
