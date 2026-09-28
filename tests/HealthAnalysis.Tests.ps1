@@ -1,11 +1,17 @@
-$systemModulePath  = Join-Path $PSScriptRoot "..\src\Modules\SystemInformation.psm1"
-$networkModulePath = Join-Path $PSScriptRoot "..\src\Modules\NetworkDiagnostics.psm1"
-$windowsModulePath = Join-Path $PSScriptRoot "..\src\Modules\WindowsDiagnostics.psm1"
-$healthModulePath  = Join-Path $PSScriptRoot "..\src\Modules\HealthAnalysis.psm1"
+$systemModulePath      = Join-Path $PSScriptRoot "..\src\Modules\SystemInformation.psm1"
+$networkModulePath     = Join-Path $PSScriptRoot "..\src\Modules\NetworkDiagnostics.psm1"
+$windowsModulePath     = Join-Path $PSScriptRoot "..\src\Modules\WindowsDiagnostics.psm1"
+$storageModulePath     = Join-Path $PSScriptRoot "..\src\Modules\StorageDiagnostics.psm1"
+$updateModulePath      = Join-Path $PSScriptRoot "..\src\Modules\WindowsUpdateDiagnostics.psm1"
+$performanceModulePath = Join-Path $PSScriptRoot "..\src\Modules\PerformanceDiagnostics.psm1"
+$healthModulePath      = Join-Path $PSScriptRoot "..\src\Modules\HealthAnalysis.psm1"
 
 Import-Module $systemModulePath -Force
 Import-Module $networkModulePath -Force
 Import-Module $windowsModulePath -Force
+Import-Module $storageModulePath -Force
+Import-Module $updateModulePath -Force
+Import-Module $performanceModulePath -Force
 Import-Module $healthModulePath -Force
 
 
@@ -31,8 +37,8 @@ Describe "HealthAnalysis Module" {
                 Should -Not -BeNullOrEmpty
         }
 
-        It "Contains an overall status" {
-            $health.OverallStatus |
+        It "Contains a GeneratedAt value" {
+            $health.GeneratedAt |
                 Should -Not -BeNullOrEmpty
         }
 
@@ -50,24 +56,36 @@ Describe "HealthAnalysis Module" {
                 Should -Not -BeNullOrEmpty
         }
 
-        It "Returns a HealthyCount" {
-            $health.HealthyCount |
-                Should -BeOfType [int]
+        It "Returns all expected health areas" {
+
+            $areas = @(
+                $health.Findings |
+                    Select-Object -ExpandProperty Area
+            )
+
+            $areas | Should -Contain 'Internet'
+            $areas | Should -Contain 'DNS'
+            $areas | Should -Contain 'Windows'
+            $areas | Should -Contain 'Storage'
+            $areas | Should -Contain 'Event Logs'
+            $areas | Should -Contain 'Services'
+            $areas | Should -Contain 'Windows Update'
+            $areas | Should -Contain 'CPU'
+            $areas | Should -Contain 'Memory'
         }
 
-        It "Returns a WarningCount" {
-            $health.WarningCount |
-                Should -BeOfType [int]
-        }
+        It "Returns valid finding severities" {
 
-        It "Returns a CriticalCount" {
-            $health.CriticalCount |
-                Should -BeOfType [int]
-        }
+            foreach ($finding in $health.Findings) {
 
-        It "Returns an InfoCount" {
-            $health.InfoCount |
-                Should -BeOfType [int]
+                $finding.Severity |
+                    Should -BeIn @(
+                        'Healthy',
+                        'Information',
+                        'Warning',
+                        'Critical'
+                    )
+            }
         }
 
         It "Returns matching finding totals" {
@@ -90,7 +108,7 @@ Describe "HealthAnalysis Module" {
             $health = Get-ITHealthAnalysis
         }
 
-        It "Each finding contains an Area" {
+        It "Every finding has an Area" {
 
             foreach ($finding in $health.Findings) {
 
@@ -99,26 +117,21 @@ Describe "HealthAnalysis Module" {
             }
         }
 
-        It "Each finding contains a Severity" {
-
-            foreach ($finding in $health.Findings) {
-
-                $finding.Severity |
-                    Should -BeIn @(
-                        'Healthy',
-                        'Information',
-                        'Warning',
-                        'Critical'
-                    )
-            }
-        }
-
-        It "Each finding contains a Finding message" {
+        It "Every finding has a Finding message" {
 
             foreach ($finding in $health.Findings) {
 
                 $finding.Finding |
                     Should -Not -BeNullOrEmpty
+            }
+        }
+
+        It "Every finding exposes a Recommendation property" {
+
+            foreach ($finding in $health.Findings) {
+
+                $finding.PSObject.Properties.Name |
+                    Should -Contain 'Recommendation'
             }
         }
     }
