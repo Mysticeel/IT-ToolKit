@@ -1,8 +1,8 @@
 # Performance Diagnostics
 
-The Performance Diagnostics module provides quick checks for common Windows performance and slow-computer investigations.
+The Performance Diagnostics module provides read-only tools for investigating slow Windows systems, resource usage, running processes, startup activity, and short-term performance trends.
 
-It is designed to help IT technicians identify high resource usage, memory pressure, resource-intensive processes, and startup applications.
+It is designed to help IT technicians move beyond a single snapshot and investigate what a computer is doing over a short period of time.
 
 ## Features
 
@@ -13,8 +13,10 @@ The Performance Diagnostics module currently provides:
 - Memory usage
 - System uptime
 - Top processes by accumulated CPU time
-- Top processes by memory usage
+- Top processes by working-set memory
 - Startup item discovery
+- Live performance sampling
+- Detailed process inspection
 
 ---
 
@@ -39,6 +41,8 @@ The menu provides:
 2. Top CPU processes
 3. Top memory processes
 4. Startup items
+5. Live performance sample
+6. Process details
 
 B. Back
 ```
@@ -59,8 +63,6 @@ Information includes:
 - System uptime
 
 ### PowerShell Usage
-
-Run:
 
 ```powershell
 Get-ITPerformanceSnapshot
@@ -98,7 +100,7 @@ Specify the number of results:
 Get-ITTopProcesses -Top 20
 ```
 
-The supported range is:
+Supported range:
 
 ```text
 1-50
@@ -108,23 +110,21 @@ Returned information includes:
 
 - Process name
 - Process ID
-- CPU time
-- Working set
+- Accumulated CPU time
+- Working-set memory
 - Handle count
 
 ### Important
 
-The `CPU` value returned by PowerShell represents accumulated processor time used by the process.
+The `CPU` property represents accumulated processor time used by a process during its lifetime.
 
-It is **not** the same as the live CPU percentage shown in Task Manager.
-
-This feature is therefore useful for identifying processes that have consumed significant processor time during their lifetime, but it should not be treated as a live CPU utilisation ranking.
+It is not the same as live CPU percentage in Task Manager.
 
 ---
 
 ## Top Memory Processes
 
-The Top Memory Processes check identifies processes using the largest working-set memory.
+The Top Memory Processes check identifies processes using the most working-set memory.
 
 ### PowerShell Usage
 
@@ -138,20 +138,24 @@ Specify the number of results:
 Get-ITMemoryConsumers -Top 20
 ```
 
+Supported range:
+
+```text
+1-50
+```
+
 Returned information includes:
 
 - Process name
 - Process ID
-- Memory usage in MB
+- Working-set memory in MB
 - Handle count
-
-Working-set memory represents the amount of physical memory currently associated with the process.
 
 ---
 
 ## Startup Items
 
-The Startup Items diagnostic retrieves applications configured to start automatically with Windows or user sign-in.
+Startup Items retrieves applications configured to start automatically with Windows or user sign-in.
 
 ### PowerShell Usage
 
@@ -173,13 +177,162 @@ Startup information can be useful when investigating:
 - Unexpected background applications
 - Excessive startup activity
 
-### Important
+A startup item does not automatically indicate a problem.
 
-A startup application does not automatically indicate a performance problem.
+IT-Toolkit does not disable startup items automatically.
 
-Startup items should be reviewed in context before disabling or removing anything.
+---
 
-IT-Toolkit does not automatically disable startup applications.
+## Live Performance Sampling
+
+Live Performance Sampling collects multiple CPU and memory snapshots over a configurable period.
+
+This provides a better view of short-term performance behaviour than a single snapshot.
+
+### PowerShell Usage
+
+```powershell
+Get-ITPerformanceSample
+```
+
+Default behaviour:
+
+```text
+Samples  : 10
+Interval : 1 second
+```
+
+Specify custom values:
+
+```powershell
+Get-ITPerformanceSample `
+    -Samples 20 `
+    -IntervalSeconds 2
+```
+
+Supported sample range:
+
+```text
+2-60
+```
+
+Supported interval range:
+
+```text
+1-10 seconds
+```
+
+### Returned Summary
+
+The function returns:
+
+- Sample count
+- Sampling interval
+- Average CPU usage
+- Peak CPU usage
+- Average memory usage
+- Peak memory usage
+- Individual sample data
+
+Example:
+
+```text
+SampleCount          : 10
+IntervalSeconds      : 1
+CPUAveragePercent    : 17.4
+CPUPeakPercent       : 43
+MemoryAveragePercent : 58.2
+MemoryPeakPercent    : 59.1
+```
+
+Values shown above are examples only.
+
+### Individual Samples
+
+Individual samples include:
+
+- Sample number
+- Timestamp
+- CPU usage percentage
+- Memory usage percentage
+
+Example:
+
+```powershell
+$result = Get-ITPerformanceSample `
+    -Samples 5 `
+    -IntervalSeconds 1
+
+$result.Samples |
+    Format-Table -AutoSize
+```
+
+### Interpretation
+
+Sampling is useful when investigating issues such as:
+
+- Intermittent CPU spikes
+- Sustained high CPU usage
+- Increasing memory usage
+- Short periods of system slowdown
+
+A short sample window may still miss intermittent problems.
+
+Longer observation periods should be used where appropriate.
+
+---
+
+## Process Details
+
+Process Details provides a deeper view of a specific running process.
+
+### PowerShell Usage
+
+First identify a process:
+
+```powershell
+Get-Process |
+    Sort-Object WorkingSet64 -Descending |
+    Select-Object -First 10 ProcessName, Id
+```
+
+Then inspect it:
+
+```powershell
+Get-ITProcessDetails -Id 1234
+```
+
+Returned information may include:
+
+- Process name
+- Process ID
+- Accumulated CPU time
+- Working-set memory
+- Handle count
+- Thread count
+- Start time
+- Parent process ID
+- Executable path
+- Command line
+
+### Permissions
+
+Some process properties may not be available for every process.
+
+For example, executable paths or process details may be restricted depending on:
+
+- Process ownership
+- Windows security boundaries
+- Elevation level
+- Protected system processes
+
+Missing values do not automatically indicate a fault.
+
+### Missing Processes
+
+If a process no longer exists, the function returns a structured result containing an `Error` property.
+
+This allows scripts and the interactive toolkit to handle missing process IDs cleanly.
 
 ---
 
@@ -187,10 +340,12 @@ IT-Toolkit does not automatically disable startup applications.
 
 | Function | Description |
 | --- | --- |
-| `Get-ITPerformanceSnapshot` | Returns current CPU, memory, and uptime information |
+| `Get-ITPerformanceSnapshot` | Returns current CPU, memory and uptime information |
 | `Get-ITTopProcesses` | Returns processes ranked by accumulated CPU time |
 | `Get-ITMemoryConsumers` | Returns processes ranked by working-set memory |
 | `Get-ITStartupItems` | Returns discovered Windows startup items |
+| `Get-ITPerformanceSample` | Collects repeated CPU and memory samples |
+| `Get-ITProcessDetails` | Returns detailed information about a selected process |
 
 ---
 
@@ -200,9 +355,10 @@ Performance Diagnostics requires:
 
 - Windows 10 or Windows 11
 - Windows PowerShell 5.1 or later
-- Access to Windows process and CIM information
+- Access to Windows process information
+- Access to Windows CIM information
 
-Some process information may vary depending on permissions.
+Some process information may require elevated permissions.
 
 ---
 
@@ -230,20 +386,38 @@ GitHub Actions also runs the project test suite automatically for repository cha
 
 ---
 
-## Interpretation
+## Performance Considerations
 
-Performance information should be interpreted over time and in context.
-
-A single snapshot may not identify intermittent performance problems.
+Live sampling intentionally pauses between samples.
 
 For example:
 
-- CPU usage may spike briefly during normal activity
-- Memory usage may be high because Windows is caching data
-- A process with high accumulated CPU time may not currently be busy
-- Startup items may be legitimate and necessary
+```powershell
+Get-ITPerformanceSample `
+    -Samples 10 `
+    -IntervalSeconds 1
+```
 
-Performance Diagnostics is intended to provide a useful starting point for further investigation.
+takes approximately nine seconds between the first and final sample, plus the time required to collect each snapshot.
+
+Long sample counts and intervals will therefore take longer to complete.
+
+---
+
+## Interpretation
+
+Performance information should always be interpreted in context.
+
+For example:
+
+- Brief CPU spikes may be normal
+- High memory usage may be legitimate
+- Windows may use available memory for caching
+- Accumulated CPU time does not indicate current CPU load
+- A single process using significant resources may be expected
+- A short sample window may not capture an intermittent issue
+
+Performance Diagnostics is intended to support investigation rather than provide an automatic diagnosis.
 
 ---
 
@@ -257,10 +431,13 @@ Output may contain:
 
 - Process names
 - Process IDs
-- Memory usage
-- Startup commands
-- Usernames
 - Application paths
+- Command-line arguments
+- Usernames
+- Startup commands
+- Resource usage information
+
+Command-line arguments may contain sensitive information depending on the application.
 
 Review output before sharing it externally.
 
@@ -268,8 +445,14 @@ Review output before sharing it externally.
 
 ## Security
 
-IT-Toolkit does not automatically terminate processes, disable startup items, or modify Windows performance settings.
+Performance Diagnostics is currently read-only.
 
-The Performance Diagnostics module is currently read-only.
+IT-Toolkit does not automatically:
+
+- Terminate processes
+- Change process priorities
+- Disable startup applications
+- Modify command lines
+- Modify Windows performance settings
 
 IT-Toolkit should only be used on systems you own or are authorised to administer.
