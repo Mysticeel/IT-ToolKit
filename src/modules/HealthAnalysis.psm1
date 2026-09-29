@@ -2,13 +2,11 @@ function Get-ITHealthAnalysis {
     [CmdletBinding()]
     param()
 
-    $systemInfo = Get-ITSystemInformation
     $internetStatus = Test-ITInternetConnection
     $dnsStatus = Test-ITDNSResolution
     $pendingReboot = Get-ITPendingReboot
     $serviceHealth = Get-ITServiceHealth
     $recentErrors = Get-ITRecentSystemErrors -Hours 24 -MaxEvents 500
-
     $storageHealth = Get-ITStorageHealth
     $updateStatus = Get-ITWindowsUpdateStatus
     $performance = Get-ITPerformanceSnapshot

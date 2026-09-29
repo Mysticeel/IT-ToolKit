@@ -1,4 +1,4 @@
-name: Pester Tests
+name: PowerShell Quality Checks
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   test:
-    name: Run Pester tests
+    name: Pester Tests
     runs-on: windows-latest
 
     steps:
@@ -39,3 +39,43 @@ jobs:
           Invoke-Pester `
             -Path ./tests `
             -CI
+
+  analyze:
+    name: PSScriptAnalyzer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer `
+            -Scope CurrentUser `
+            -Force
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Import-Module PSScriptAnalyzer -Force
+
+          $results = Invoke-ScriptAnalyzer `
+            -Path ./src `
+            -Recurse `
+            -Severity Warning,Error
+
+          if ($results) {
+              $results |
+                  Format-Table `
+                      RuleName,
+                      Severity,
+                      ScriptName,
+                      Line,
+                      Message `
+                      -AutoSize
+
+              throw "PSScriptAnalyzer found $($results.Count) issue(s)."
+          }
+
+          Write-Host "PSScriptAnalyzer completed successfully with no warnings or errors."
