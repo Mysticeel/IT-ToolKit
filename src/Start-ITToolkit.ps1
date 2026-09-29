@@ -834,6 +834,8 @@ function Show-PerformanceDiagnosticsMenu {
         Write-Host "2. Top CPU processes"
         Write-Host "3. Top memory processes"
         Write-Host "4. Startup items"
+        Write-Host "5. Live performance sample"
+        Write-Host "6. Process details"
         Write-Host ""
         Write-Host "B. Back"
         Write-Host ""
@@ -966,6 +968,163 @@ function Show-PerformanceDiagnosticsMenu {
                 else {
 
                     Write-Host "No startup items were returned."
+                }
+
+                Wait-ITToolkit
+            }
+
+            "5" {
+
+                Show-Header -Title "Live Performance Sample"
+
+                $sampleInput = Read-Host "Number of samples (default: 10, range: 2-60)"
+
+                if ([string]::IsNullOrWhiteSpace($sampleInput)) {
+
+                    $samples = 10
+                }
+                elseif (
+                    $sampleInput -match '^\d+$' -and
+                    [int]$sampleInput -ge 2 -and
+                    [int]$sampleInput -le 60
+                ) {
+
+                    $samples = [int]$sampleInput
+                }
+                else {
+
+                    Write-Host ""
+                    Write-Host "Enter a value between 2 and 60."
+
+                    Wait-ITToolkit
+                    continue
+                }
+
+
+                $intervalInput = Read-Host "Interval in seconds (default: 1, range: 1-10)"
+
+                if ([string]::IsNullOrWhiteSpace($intervalInput)) {
+
+                    $interval = 1
+                }
+                elseif (
+                    $intervalInput -match '^\d+$' -and
+                    [int]$intervalInput -ge 1 -and
+                    [int]$intervalInput -le 10
+                ) {
+
+                    $interval = [int]$intervalInput
+                }
+                else {
+
+                    Write-Host ""
+                    Write-Host "Enter a value between 1 and 10 seconds."
+
+                    Wait-ITToolkit
+                    continue
+                }
+
+
+                Write-Host ""
+                Write-Host "Collecting $samples performance samples..."
+                Write-Host ""
+                Write-Host "Interval: $interval second(s)"
+                Write-Host ""
+
+                try {
+
+                    $result = Get-ITPerformanceSample `
+                        -Samples $samples `
+                        -IntervalSeconds $interval
+
+                    Write-Host "Summary"
+                    Write-Host "======="
+                    Write-Host ""
+
+                    Write-Host "Samples          : $($result.SampleCount)"
+                    Write-Host "Interval         : $($result.IntervalSeconds) second(s)"
+                    Write-Host "Average CPU      : $($result.CPUAveragePercent)%"
+                    Write-Host "Peak CPU         : $($result.CPUPeakPercent)%"
+                    Write-Host "Average Memory   : $($result.MemoryAveragePercent)%"
+                    Write-Host "Peak Memory      : $($result.MemoryPeakPercent)%"
+                    Write-Host ""
+
+                    Write-Host "Samples"
+                    Write-Host "======="
+                    Write-Host ""
+
+                    $result.Samples |
+                        Format-Table `
+                            Sample,
+                            Timestamp,
+                            CPUUsagePercent,
+                            MemoryUsedPercent `
+                            -AutoSize
+                }
+                catch {
+
+                    Write-Host ""
+                    Write-Host "Unable to collect performance samples."
+                    Write-Host ""
+                    Write-Host "Error:"
+                    Write-Host $_.Exception.Message
+                }
+
+                Wait-ITToolkit
+            }
+
+            "6" {
+
+                Show-Header -Title "Process Details"
+
+                Write-Host "Use Top CPU or Top Memory Processes to identify a process ID."
+                Write-Host ""
+
+                $processIdInput = Read-Host "Enter process ID"
+
+                if (
+                    $processIdInput -notmatch '^\d+$' -or
+                    [int64]$processIdInput -lt 1 -or
+                    [int64]$processIdInput -gt 2147483647
+                ) {
+
+                    Write-Host ""
+                    Write-Host "Enter a valid process ID."
+
+                    Wait-ITToolkit
+                    continue
+                }
+
+                $processId = [int]$processIdInput
+
+                Write-Host ""
+                Write-Host "Collecting details for process ID $processId..."
+                Write-Host ""
+
+                $process = Get-ITProcessDetails `
+                    -Id $processId
+
+                if ($process.Error) {
+
+                    Write-Host "Unable to retrieve process details."
+                    Write-Host ""
+                    Write-Host "Error:"
+                    Write-Host $process.Error
+                }
+                else {
+
+                    $process |
+                        Format-List `
+                            ProcessName,
+                            Id,
+                            CPUTimeSeconds,
+                            MemoryMB,
+                            Handles,
+                            Threads,
+                            StartTime,
+                            ParentProcessId,
+                            Path,
+                            CommandLine
                 }
 
                 Wait-ITToolkit

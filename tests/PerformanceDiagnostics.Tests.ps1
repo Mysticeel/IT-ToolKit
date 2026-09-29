@@ -1,6 +1,7 @@
-$modulePath = Join-Path $PSScriptRoot "..\src\Modules\PerformanceDiagnostics.psm1"
+$modulePath = Join-Path $PSScriptRoot "..\src\modules\PerformanceDiagnostics.psm1"
 
 Import-Module $modulePath -Force
+
 
 Describe "PerformanceDiagnostics Module" {
 
@@ -25,6 +26,16 @@ Describe "PerformanceDiagnostics Module" {
             Get-Command Get-ITStartupItems -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
+
+        It "Exports Get-ITPerformanceSample" {
+            Get-Command Get-ITPerformanceSample -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It "Exports Get-ITProcessDetails" {
+            Get-Command Get-ITProcessDetails -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
     }
 
 
@@ -44,11 +55,8 @@ Describe "PerformanceDiagnostics Module" {
                 Should -BeGreaterOrEqual 0
         }
 
-        It "Returns a valid memory percentage" {
-            $result.MemoryUsedPercent |
-                Should -BeGreaterOrEqual 0
-
-            $result.MemoryUsedPercent |
+        It "Returns CPU usage no greater than 100" {
+            $result.CPUUsagePercent |
                 Should -BeLessOrEqual 100
         }
 
@@ -57,8 +65,19 @@ Describe "PerformanceDiagnostics Module" {
                 Should -BeGreaterThan 0
         }
 
+        It "Returns a valid memory percentage" {
+            $result.MemoryUsedPercent |
+                Should -BeGreaterOrEqual 0
+
+            $result.MemoryUsedPercent |
+                Should -BeLessOrEqual 100
+        }
+
         It "Returns valid uptime" {
             $result.UptimeDays |
+                Should -BeGreaterOrEqual 0
+
+            $result.UptimeHours |
                 Should -BeGreaterOrEqual 0
         }
     }
@@ -78,6 +97,25 @@ Describe "PerformanceDiagnostics Module" {
 
             $result.Count |
                 Should -BeLessOrEqual 5
+        }
+
+        It "Returns expected properties" {
+            $result = Get-ITTopProcesses -Top 1
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'ProcessName'
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'Id'
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'CPU'
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'WorkingSet64'
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'Handles'
         }
 
         It "Rejects Top greater than 50" {
@@ -103,11 +141,34 @@ Describe "PerformanceDiagnostics Module" {
                 Should -Not -BeNullOrEmpty
         }
 
+        It "Returns no more than the requested number" {
+            $result = @(Get-ITMemoryConsumers -Top 5)
+
+            $result.Count |
+                Should -BeLessOrEqual 5
+        }
+
         It "Returns MemoryMB" {
             $result = Get-ITMemoryConsumers -Top 1
 
             $result.MemoryMB |
                 Should -BeGreaterOrEqual 0
+        }
+
+        It "Returns expected properties" {
+            $result = Get-ITMemoryConsumers -Top 1
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'ProcessName'
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'Id'
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'MemoryMB'
+
+            $result.PSObject.Properties.Name |
+                Should -Contain 'Handles'
         }
 
         It "Rejects Top greater than 50" {
@@ -130,6 +191,193 @@ Describe "PerformanceDiagnostics Module" {
             {
                 Get-ITStartupItems
             } | Should -Not -Throw
+        }
+    }
+
+
+    Context "Live performance sampling" {
+
+        BeforeAll {
+            $sample = Get-ITPerformanceSample `
+                -Samples 2 `
+                -IntervalSeconds 1
+        }
+
+        It "Returns a performance sample result" {
+            $sample |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It "Returns the requested sample count" {
+            $sample.SampleCount |
+                Should -Be 2
+        }
+
+        It "Returns the requested interval" {
+            $sample.IntervalSeconds |
+                Should -Be 1
+        }
+
+        It "Contains exactly the requested number of samples" {
+            @($sample.Samples).Count |
+                Should -Be 2
+        }
+
+        It "Returns a valid CPU average" {
+            $sample.CPUAveragePercent |
+                Should -BeGreaterOrEqual 0
+
+            $sample.CPUAveragePercent |
+                Should -BeLessOrEqual 100
+        }
+
+        It "Returns a valid CPU peak" {
+            $sample.CPUPeakPercent |
+                Should -BeGreaterOrEqual 0
+
+            $sample.CPUPeakPercent |
+                Should -BeLessOrEqual 100
+        }
+
+        It "Returns a valid memory average" {
+            $sample.MemoryAveragePercent |
+                Should -BeGreaterOrEqual 0
+
+            $sample.MemoryAveragePercent |
+                Should -BeLessOrEqual 100
+        }
+
+        It "Returns a valid memory peak" {
+            $sample.MemoryPeakPercent |
+                Should -BeGreaterOrEqual 0
+
+            $sample.MemoryPeakPercent |
+                Should -BeLessOrEqual 100
+        }
+
+        It "CPU peak is greater than or equal to CPU average" {
+            $sample.CPUPeakPercent |
+                Should -BeGreaterOrEqual $sample.CPUAveragePercent
+        }
+
+        It "Memory peak is greater than or equal to memory average" {
+            $sample.MemoryPeakPercent |
+                Should -BeGreaterOrEqual $sample.MemoryAveragePercent
+        }
+
+        It "Each sample contains the expected properties" {
+            foreach ($entry in $sample.Samples) {
+
+                $entry.PSObject.Properties.Name |
+                    Should -Contain 'Sample'
+
+                $entry.PSObject.Properties.Name |
+                    Should -Contain 'Timestamp'
+
+                $entry.PSObject.Properties.Name |
+                    Should -Contain 'CPUUsagePercent'
+
+                $entry.PSObject.Properties.Name |
+                    Should -Contain 'MemoryUsedPercent'
+            }
+        }
+
+        It "Rejects fewer than 2 samples" {
+            {
+                Get-ITPerformanceSample -Samples 1
+            } | Should -Throw
+        }
+
+        It "Rejects more than 60 samples" {
+            {
+                Get-ITPerformanceSample -Samples 61
+            } | Should -Throw
+        }
+
+        It "Rejects intervals below 1 second" {
+            {
+                Get-ITPerformanceSample `
+                    -Samples 2 `
+                    -IntervalSeconds 0
+            } | Should -Throw
+        }
+
+        It "Rejects intervals greater than 10 seconds" {
+            {
+                Get-ITPerformanceSample `
+                    -Samples 2 `
+                    -IntervalSeconds 11
+            } | Should -Throw
+        }
+    }
+
+
+    Context "Process details" {
+
+        BeforeAll {
+            $currentProcess = Get-Process -Id $PID
+
+            $details = Get-ITProcessDetails `
+                -Id $currentProcess.Id
+        }
+
+        It "Returns process details for an existing process" {
+            $details |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It "Returns the requested process ID" {
+            $details.Id |
+                Should -Be $PID
+        }
+
+        It "Returns a process name" {
+            $details.ProcessName |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It "Returns memory usage" {
+            $details.MemoryMB |
+                Should -BeGreaterOrEqual 0
+        }
+
+        It "Returns a handle count" {
+            $details.Handles |
+                Should -BeGreaterOrEqual 0
+        }
+
+        It "Returns a thread count" {
+            $details.Threads |
+                Should -BeGreaterOrEqual 0
+        }
+
+        It "Returns an Error property" {
+            $details.PSObject.Properties.Name |
+                Should -Contain 'Error'
+        }
+
+        It "Returns no error for the current process" {
+            $details.Error |
+                Should -BeNullOrEmpty
+        }
+
+        It "Returns a structured error for a missing process" {
+            $missingProcessId = 2147483647
+
+            $missing = Get-ITProcessDetails `
+                -Id $missingProcessId
+
+            $missing.Id |
+                Should -Be $missingProcessId
+
+            $missing.Error |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It "Rejects process ID zero" {
+            {
+                Get-ITProcessDetails -Id 0
+            } | Should -Throw
         }
     }
 }
