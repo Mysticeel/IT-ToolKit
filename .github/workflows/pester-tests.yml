@@ -60,10 +60,14 @@ jobs:
         run: |
           Import-Module PSScriptAnalyzer -Force
 
+          if (-not (Test-Path ./PSScriptAnalyzerSettings.psd1)) {
+              throw "PSScriptAnalyzerSettings.psd1 was not found in the repository root."
+          }
+
           $results = Invoke-ScriptAnalyzer `
             -Path ./src `
             -Recurse `
-            -Severity Warning,Error
+            -Settings ./PSScriptAnalyzerSettings.psd1
 
           if ($results) {
               $results |
