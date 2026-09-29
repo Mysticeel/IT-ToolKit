@@ -34,8 +34,9 @@ function Get-ITPendingReboot {
             $reasons += 'Pending File Rename Operations'
         }
     }
+    
     catch {
-        # No pending file rename value found
+        Write-Verbose "Unable to complete this reboot-status check: $($_.Exception.Message)"
     }
 
     [PSCustomObject]@{

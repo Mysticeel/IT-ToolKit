@@ -1,38 +1,90 @@
-$systemModulePath      = Join-Path $PSScriptRoot "..\src\Modules\SystemInformation.psm1"
-$networkModulePath     = Join-Path $PSScriptRoot "..\src\Modules\NetworkDiagnostics.psm1"
-$windowsModulePath     = Join-Path $PSScriptRoot "..\src\Modules\WindowsDiagnostics.psm1"
-$storageModulePath     = Join-Path $PSScriptRoot "..\src\Modules\StorageDiagnostics.psm1"
-$updateModulePath      = Join-Path $PSScriptRoot "..\src\Modules\WindowsUpdateDiagnostics.psm1"
-$performanceModulePath = Join-Path $PSScriptRoot "..\src\Modules\PerformanceDiagnostics.psm1"
-$healthModulePath      = Join-Path $PSScriptRoot "..\src\Modules\HealthAnalysis.psm1"
-$reportModulePath      = Join-Path $PSScriptRoot "..\src\Modules\DiagnosticReport.psm1"
-
-Import-Module $systemModulePath -Force
-Import-Module $networkModulePath -Force
-Import-Module $windowsModulePath -Force
-Import-Module $storageModulePath -Force
-Import-Module $updateModulePath -Force
-Import-Module $performanceModulePath -Force
-Import-Module $healthModulePath -Force
-Import-Module $reportModulePath -Force
-
-
 Describe "DiagnosticReport Module" {
+
+    BeforeAll {
+
+        $systemModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\SystemInformation.psm1"
+
+        $networkModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\NetworkDiagnostics.psm1"
+
+        $windowsModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\WindowsDiagnostics.psm1"
+
+        $storageModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\StorageDiagnostics.psm1"
+
+        $updateModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\WindowsUpdateDiagnostics.psm1"
+
+        $performanceModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\PerformanceDiagnostics.psm1"
+
+        $healthModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\HealthAnalysis.psm1"
+
+        $reportModulePath = Join-Path `
+            $PSScriptRoot `
+            "..\src\modules\DiagnosticReport.psm1"
+
+
+        Import-Module $systemModulePath -Force
+        Import-Module $networkModulePath -Force
+        Import-Module $windowsModulePath -Force
+        Import-Module $storageModulePath -Force
+        Import-Module $updateModulePath -Force
+        Import-Module $performanceModulePath -Force
+        Import-Module $healthModulePath -Force
+        Import-Module $reportModulePath -Force
+
+
+        # Generate the report once because Windows Update and
+        # the other integrated diagnostics can take time.
+        $report = Get-ITDiagnosticReportData
+    }
+
 
     Context "Module structure" {
 
         It "Exports Get-ITDiagnosticReportData" {
-            Get-Command Get-ITDiagnosticReportData -ErrorAction SilentlyContinue |
+
+            Get-Command `
+                Get-ITDiagnosticReportData `
+                -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
+
 
         It "Exports Export-ITDiagnosticReportText" {
-            Get-Command Export-ITDiagnosticReportText -ErrorAction SilentlyContinue |
+
+            Get-Command `
+                Export-ITDiagnosticReportText `
+                -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
 
+
         It "Exports Export-ITDiagnosticReportHtml" {
-            Get-Command Export-ITDiagnosticReportHtml -ErrorAction SilentlyContinue |
+
+            Get-Command `
+                Export-ITDiagnosticReportHtml `
+                -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Exports Export-ITDiagnosticReportJson" {
+
+            Get-Command `
+                Export-ITDiagnosticReportJson `
+                -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
     }
@@ -40,14 +92,12 @@ Describe "DiagnosticReport Module" {
 
     Context "Unified report data" {
 
-        BeforeAll {
-            $report = Get-ITDiagnosticReportData
-        }
-
         It "Returns a report object" {
+
             $report |
                 Should -Not -BeNullOrEmpty
         }
+
 
         It "Contains all report sections" {
 
@@ -76,7 +126,9 @@ Describe "DiagnosticReport Module" {
                 Should -Contain 'Summary'
         }
 
+
         It "Contains an overall health status" {
+
             $report.Health.OverallStatus |
                 Should -BeIn @(
                     'Healthy',
@@ -85,17 +137,23 @@ Describe "DiagnosticReport Module" {
                 )
         }
 
+
         It "Contains logical drive data" {
+
             $report.Storage.LogicalDrives |
                 Should -Not -BeNullOrEmpty
         }
 
+
         It "Contains performance data" {
+
             $report.Performance.CPUUsagePercent |
                 Should -BeGreaterOrEqual 0
         }
 
+
         It "Contains a Windows Update count" {
+
             $report.WindowsUpdate.PSObject.Properties.Name |
                 Should -Contain 'UpdateCount'
         }
@@ -105,34 +163,58 @@ Describe "DiagnosticReport Module" {
     Context "Text export" {
 
         BeforeAll {
-            $testDirectory = Join-Path $TestDrive "reports"
-            $textPath = Join-Path $testDirectory "report.txt"
 
-            $report = Get-ITDiagnosticReportData
+            $textDirectory = Join-Path `
+                $TestDrive `
+                "text"
+
+            $textPath = Join-Path `
+                $textDirectory `
+                "report.txt"
 
             Export-ITDiagnosticReportText `
                 -Report $report `
                 -Path $textPath |
                 Out-Null
 
-            $textContent = Get-Content $textPath -Raw
+            $textContent = Get-Content `
+                -Path $textPath `
+                -Raw
         }
 
+
         It "Creates the text report" {
+
             Test-Path $textPath |
                 Should -BeTrue
         }
 
+
         It "Contains all major sections" {
 
-            $textContent | Should -Match 'SUMMARY'
-            $textContent | Should -Match 'SYSTEM INFORMATION'
-            $textContent | Should -Match 'NETWORK'
-            $textContent | Should -Match 'WINDOWS HEALTH'
-            $textContent | Should -Match 'STORAGE'
-            $textContent | Should -Match 'WINDOWS UPDATE'
-            $textContent | Should -Match 'PERFORMANCE'
-            $textContent | Should -Match 'HEALTH ANALYSIS'
+            $textContent |
+                Should -Match 'SUMMARY'
+
+            $textContent |
+                Should -Match 'SYSTEM INFORMATION'
+
+            $textContent |
+                Should -Match 'NETWORK'
+
+            $textContent |
+                Should -Match 'WINDOWS HEALTH'
+
+            $textContent |
+                Should -Match 'STORAGE'
+
+            $textContent |
+                Should -Match 'WINDOWS UPDATE'
+
+            $textContent |
+                Should -Match 'PERFORMANCE'
+
+            $textContent |
+                Should -Match 'HEALTH ANALYSIS'
         }
     }
 
@@ -140,44 +222,255 @@ Describe "DiagnosticReport Module" {
     Context "HTML export" {
 
         BeforeAll {
-            $testDirectory = Join-Path $TestDrive "reports"
-            $htmlPath = Join-Path $testDirectory "report.html"
 
-            $report = Get-ITDiagnosticReportData
+            $htmlDirectory = Join-Path `
+                $TestDrive `
+                "html"
+
+            $htmlPath = Join-Path `
+                $htmlDirectory `
+                "report.html"
 
             Export-ITDiagnosticReportHtml `
                 -Report $report `
                 -Path $htmlPath |
                 Out-Null
 
-            $htmlContent = Get-Content $htmlPath -Raw
+            $htmlContent = Get-Content `
+                -Path $htmlPath `
+                -Raw
         }
 
+
         It "Creates the HTML report" {
+
             Test-Path $htmlPath |
                 Should -BeTrue
         }
 
+
         It "Contains the report title" {
+
             $htmlContent |
                 Should -Match 'IT-Toolkit Diagnostic Report'
         }
 
+
         It "Contains all report sections" {
 
-            $htmlContent | Should -Match '<h2>Summary</h2>'
-            $htmlContent | Should -Match '<h2>System Information</h2>'
-            $htmlContent | Should -Match '<h2>Network</h2>'
-            $htmlContent | Should -Match '<h2>Windows Health</h2>'
-            $htmlContent | Should -Match '<h2>Storage</h2>'
-            $htmlContent | Should -Match '<h2>Windows Update</h2>'
-            $htmlContent | Should -Match '<h2>Performance</h2>'
-            $htmlContent | Should -Match '<h2>Health Analysis</h2>'
+            $htmlContent |
+                Should -Match '<h2>Summary</h2>'
+
+            $htmlContent |
+                Should -Match '<h2>System Information</h2>'
+
+            $htmlContent |
+                Should -Match '<h2>Network</h2>'
+
+            $htmlContent |
+                Should -Match '<h2>Windows Health</h2>'
+
+            $htmlContent |
+                Should -Match '<h2>Storage</h2>'
+
+            $htmlContent |
+                Should -Match '<h2>Windows Update</h2>'
+
+            $htmlContent |
+                Should -Match '<h2>Performance</h2>'
+
+            $htmlContent |
+                Should -Match '<h2>Health Analysis</h2>'
         }
 
+
         It "Contains severity badge styling" {
+
             $htmlContent |
                 Should -Match 'badge healthy'
+        }
+    }
+
+
+    Context "JSON export" {
+
+        BeforeAll {
+
+            $jsonDirectory = Join-Path `
+                $TestDrive `
+                "json"
+
+            $jsonPath = Join-Path `
+                $jsonDirectory `
+                "report.json"
+
+            Export-ITDiagnosticReportJson `
+                -Report $report `
+                -Path $jsonPath |
+                Out-Null
+
+            $jsonContent = Get-Content `
+                -Path $jsonPath `
+                -Raw
+
+            $jsonObject = $jsonContent |
+                ConvertFrom-Json
+        }
+
+
+        It "Creates the JSON report" {
+
+            Test-Path $jsonPath |
+                Should -BeTrue
+        }
+
+
+        It "Creates valid JSON" {
+
+            {
+                $jsonContent |
+                    ConvertFrom-Json
+            } |
+                Should -Not -Throw
+        }
+
+
+        It "Contains GeneratedAt" {
+
+            $jsonObject.GeneratedAt |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the Summary section" {
+
+            $jsonObject.Summary |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the System section" {
+
+            $jsonObject.System |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the Network section" {
+
+            $jsonObject.Network |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the Windows section" {
+
+            $jsonObject.Windows |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the Storage section" {
+
+            $jsonObject.Storage |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the Windows Update section" {
+
+            $jsonObject.WindowsUpdate |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the Performance section" {
+
+            $jsonObject.Performance |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Contains the Health section" {
+
+            $jsonObject.Health |
+                Should -Not -BeNullOrEmpty
+        }
+
+
+        It "Preserves the overall health status" {
+
+            $jsonObject.Summary.OverallHealth |
+                Should -Be $report.Summary.OverallHealth
+        }
+
+
+        It "Preserves the computer name" {
+
+            $jsonObject.System.ComputerName |
+                Should -Be $report.System.ComputerName
+        }
+
+
+        It "Preserves the Windows Update count" {
+
+            $jsonObject.WindowsUpdate.UpdateCount |
+                Should -Be $report.WindowsUpdate.UpdateCount
+        }
+
+
+        It "Preserves CPU usage" {
+
+            $jsonObject.Performance.CPUUsagePercent |
+                Should -Be $report.Performance.CPUUsagePercent
+        }
+
+
+        It "Preserves the health analysis status" {
+
+            $jsonObject.Health.OverallStatus |
+                Should -Be $report.Health.OverallStatus
+        }
+
+
+        It "Supports a custom JSON depth" {
+
+            $customPath = Join-Path `
+                $jsonDirectory `
+                "report-custom-depth.json"
+
+            {
+                Export-ITDiagnosticReportJson `
+                    -Report $report `
+                    -Path $customPath `
+                    -Depth 20 |
+                    Out-Null
+            } |
+                Should -Not -Throw
+        }
+
+
+        It "Rejects JSON depth below 3" {
+
+            {
+                Export-ITDiagnosticReportJson `
+                    -Report $report `
+                    -Path $jsonPath `
+                    -Depth 2
+            } |
+                Should -Throw
+        }
+
+
+        It "Rejects JSON depth above 100" {
+
+            {
+                Export-ITDiagnosticReportJson `
+                    -Report $report `
+                    -Path $jsonPath `
+                    -Depth 101
+            } |
+                Should -Throw
         }
     }
 }
