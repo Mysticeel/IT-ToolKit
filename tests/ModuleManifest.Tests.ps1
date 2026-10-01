@@ -1,171 +1,97 @@
 Describe "IT-Toolkit Module Manifest" {
-
     BeforeAll {
-
-        $manifestPath = Join-Path `
-            $PSScriptRoot `
-            "..\src\IT-Toolkit.psd1"
-
-        $manifestPath = [System.IO.Path]::GetFullPath(
-            $manifestPath
-        )
+        $manifestPath = Join-Path $PSScriptRoot "..\src\IT-Toolkit.psd1"
+        $manifestPath = [System.IO.Path]::GetFullPath($manifestPath)
     }
 
-
     Context "Manifest validation" {
-
         It "Manifest exists" {
-
             Test-Path -LiteralPath $manifestPath |
                 Should -BeTrue
         }
 
-
         It "Manifest is valid" {
-
             {
-                Test-ModuleManifest `
-                    -Path $manifestPath `
-                    -ErrorAction Stop
-            } |
-                Should -Not -Throw
+                Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
+            } | Should -Not -Throw
         }
 
-
-        It "Module version is 1.0.0" {
-
-            $manifest = Test-ModuleManifest `
-                -Path $manifestPath
+        It "Module version is 1.1.0" {
+            $manifest = Test-ModuleManifest -Path $manifestPath
 
             $manifest.Version.ToString() |
-                Should -Be '1.0.0'
+                Should -Be '1.1.0'
         }
 
-
         It "Has the expected module name" {
-
-            $manifest = Test-ModuleManifest `
-                -Path $manifestPath
+            $manifest = Test-ModuleManifest -Path $manifestPath
 
             $manifest.Name |
                 Should -Be 'IT-Toolkit'
         }
     }
 
-
     Context "Module import" {
-
         BeforeAll {
-
-            Remove-Module `
-                -Name IT-Toolkit `
-                -Force `
-                -ErrorAction SilentlyContinue
-
-            Import-Module `
-                -Name $manifestPath `
-                -Force `
-                -ErrorAction Stop
+            Remove-Module -Name IT-Toolkit -Force -ErrorAction SilentlyContinue
+            Import-Module -Name $manifestPath -Force -ErrorAction Stop
         }
-
 
         AfterAll {
-
-            Remove-Module `
-                -Name IT-Toolkit `
-                -Force `
-                -ErrorAction SilentlyContinue
+            Remove-Module -Name IT-Toolkit -Force -ErrorAction SilentlyContinue
         }
-
 
         It "Imports successfully" {
-
-            Get-Module `
-                -Name IT-Toolkit |
+            Get-Module -Name IT-Toolkit |
                 Should -Not -BeNullOrEmpty
         }
-
 
         It "Exports Get-ITSystemInformation" {
-
-            Get-Command `
-                -Name Get-ITSystemInformation `
-                -Module IT-Toolkit `
-                -ErrorAction SilentlyContinue |
+            Get-Command -Name Get-ITSystemInformation -Module IT-Toolkit -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
-
 
         It "Exports Get-ITHealthAnalysis" {
-
-            Get-Command `
-                -Name Get-ITHealthAnalysis `
-                -Module IT-Toolkit `
-                -ErrorAction SilentlyContinue |
+            Get-Command -Name Get-ITHealthAnalysis -Module IT-Toolkit -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
-
 
         It "Exports Get-ITPerformanceSample" {
-
-            Get-Command `
-                -Name Get-ITPerformanceSample `
-                -Module IT-Toolkit `
-                -ErrorAction SilentlyContinue |
+            Get-Command -Name Get-ITPerformanceSample -Module IT-Toolkit -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
 
-
         It "Exports Get-ITProcessDetails" {
+            Get-Command -Name Get-ITProcessDetails -Module IT-Toolkit -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
 
-            Get-Command `
-                -Name Get-ITProcessDetails `
-                -Module IT-Toolkit `
-                -ErrorAction SilentlyContinue |
+        It "Exports Get-ITEventCorrelation" {
+            Get-Command -Name Get-ITEventCorrelation -Module IT-Toolkit -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
     }
 
-
     Context "Public command surface" {
-
         BeforeAll {
-
-            Remove-Module `
-                -Name IT-Toolkit `
-                -Force `
-                -ErrorAction SilentlyContinue
-
-            Import-Module `
-                -Name $manifestPath `
-                -Force `
-                -ErrorAction Stop
+            Remove-Module -Name IT-Toolkit -Force -ErrorAction SilentlyContinue
+            Import-Module -Name $manifestPath -Force -ErrorAction Stop
 
             $commands = @(
-                Get-Command `
-                    -Module IT-Toolkit
+                Get-Command -Module IT-Toolkit
             )
         }
 
-
         AfterAll {
-
-            Remove-Module `
-                -Name IT-Toolkit `
-                -Force `
-                -ErrorAction SilentlyContinue
+            Remove-Module -Name IT-Toolkit -Force -ErrorAction SilentlyContinue
         }
 
-
         It "Exports commands" {
-
             $commands.Count |
                 Should -BeGreaterThan 0
         }
 
-
         It "Exports no aliases" {
-
             @(
                 $commands |
                     Where-Object {
@@ -175,9 +101,7 @@ Describe "IT-Toolkit Module Manifest" {
                 Should -Be 0
         }
 
-
         It "Exports no compiled cmdlets" {
-
             @(
                 $commands |
                     Where-Object {
@@ -187,21 +111,17 @@ Describe "IT-Toolkit Module Manifest" {
                 Should -Be 0
         }
 
-
-        It "Exports exactly 24 public functions" {
-
+        It "Exports exactly 26 public functions" {
             @(
                 $commands |
                     Where-Object {
                         $_.CommandType -eq 'Function'
                     }
             ).Count |
-                Should -Be 25
+                Should -Be 26
         }
 
-
         It "Exports only the expected public functions" {
-
             $expectedFunctions = @(
                 'Get-ITSystemInformation',
 
@@ -215,6 +135,7 @@ Describe "IT-Toolkit Module Manifest" {
                 'Get-ITPendingReboot',
                 'Get-ITServiceHealth',
                 'Get-ITRecentSystemErrors',
+                'Get-ITEventCorrelation',
 
                 'Get-ITDiagnosticReportData',
                 'Export-ITDiagnosticReportText',
@@ -242,8 +163,7 @@ Describe "IT-Toolkit Module Manifest" {
                     Where-Object {
                         $_.CommandType -eq 'Function'
                     } |
-                    Select-Object `
-                        -ExpandProperty Name |
+                    Select-Object -ExpandProperty Name |
                     Sort-Object
             )
 
