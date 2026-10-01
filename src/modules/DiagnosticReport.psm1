@@ -1114,7 +1114,7 @@ $($rows -join "`n")
 >
 <title>IT-Toolkit Diagnostic Report</title>
 <style>
-* {
+\* {
     box-sizing: border-box;
 }
 body {
@@ -1416,9 +1416,49 @@ function Export-ITDiagnosticReportJson {
     }
     Get-Item -Path $Path -ErrorAction Stop
 }
+function Export-ITDiagnosticReportCsv {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNull()]
+        [psobject]$Report,
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Path
+    )
+    $directory = Split-Path -Path $Path -Parent
+    if ($directory -and -not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+    $csvReport = [PSCustomObject]@{
+        GeneratedAt            = $Report.GeneratedAt
+        ToolkitVersion         = $Report.Metadata.ToolkitVersion
+        ReportSchemaVersion    = $Report.Metadata.ReportSchemaVersion
+        PowerShellVersion      = $Report.Metadata.PowerShellVersion
+        OverallHealth          = $Report.Summary.OverallHealth
+        InternetConnected      = $Report.Summary.InternetConnected
+        DNSWorking             = $Report.Summary.DNSWorking
+        RebootRequired         = $Report.Summary.RebootRequired
+        DriveFreePercent       = $Report.Summary.DriveFreePercent
+        PendingUpdateCount     = $Report.Summary.PendingUpdateCount
+        CPUUsagePercent        = $Report.Summary.CPUUsagePercent
+        MemoryUsedPercent      = $Report.Summary.MemoryUsedPercent
+        StoppedAutomaticCount  = $Report.Summary.StoppedAutomaticCount
+        RecentSystemErrorCount = $Report.Summary.RecentSystemErrorCount
+        CorrelatedEventCount   = $Report.Summary.CorrelatedEventCount
+    }
+    try {
+        $csvReport | Export-Csv -Path $Path -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
+    }
+    catch {
+        throw "Failed to export diagnostic report to CSV: $($_.Exception.Message)"
+    }
+    Get-Item -Path $Path -ErrorAction Stop
+}
 Export-ModuleMember -Function @(
     'Get-ITDiagnosticReportData',
     'Export-ITDiagnosticReportText',
     'Export-ITDiagnosticReportHtml',
-    'Export-ITDiagnosticReportJson'
+    'Export-ITDiagnosticReportJson',
+    'Export-ITDiagnosticReportCsv'
 )

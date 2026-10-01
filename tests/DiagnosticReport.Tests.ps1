@@ -61,6 +61,12 @@ Describe "DiagnosticReport Module" {
                 -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
+        It "Exports Export-ITDiagnosticReportCsv" {
+            Get-Command `
+                Export-ITDiagnosticReportCsv `
+                -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
     }
     Context "Unified report data" {
         It "Returns a report object" {
@@ -500,6 +506,86 @@ Describe "DiagnosticReport Module" {
                     -Path $filteredPath `
                     -Include "InvalidSection"
             } | Should -Throw
+        }
+    }
+
+    Context "CSV export" {
+        BeforeAll {
+            $csvDirectory = Join-Path $TestDrive "csv"
+            $csvPath = Join-Path $csvDirectory "report.csv"
+            Export-ITDiagnosticReportCsv `
+                -Report $report `
+                -Path $csvPath |
+                Out-Null
+            $csvData = Import-Csv -Path $csvPath
+        }
+        It "Creates the CSV report" {
+            Test-Path $csvPath |
+                Should -BeTrue
+        }
+        It "Creates one summary row" {
+            @($csvData).Count |
+                Should -Be 1
+        }
+        It "Contains GeneratedAt" {
+            $csvData.GeneratedAt |
+                Should -Not -BeNullOrEmpty
+        }
+        It "Preserves toolkit version" {
+            $csvData.ToolkitVersion |
+                Should -Be $report.Metadata.ToolkitVersion
+        }
+        It "Preserves report schema version" {
+            $csvData.ReportSchemaVersion |
+                Should -Be $report.Metadata.ReportSchemaVersion.ToString()
+        }
+        It "Preserves PowerShell version" {
+            $csvData.PowerShellVersion |
+                Should -Be $report.Metadata.PowerShellVersion
+        }
+        It "Preserves overall health" {
+            $csvData.OverallHealth |
+                Should -Be $report.Summary.OverallHealth
+        }
+        It "Preserves internet status" {
+            $csvData.InternetConnected |
+                Should -Be $report.Summary.InternetConnected.ToString()
+        }
+        It "Preserves DNS status" {
+            $csvData.DNSWorking |
+                Should -Be $report.Summary.DNSWorking.ToString()
+        }
+        It "Preserves reboot status" {
+            $csvData.RebootRequired |
+                Should -Be $report.Summary.RebootRequired.ToString()
+        }
+        It "Preserves drive free percentage" {
+            $csvData.DriveFreePercent |
+                Should -Be $report.Summary.DriveFreePercent.ToString()
+        }
+        It "Preserves pending update count" {
+            $csvData.PendingUpdateCount |
+                Should -Be $report.Summary.PendingUpdateCount.ToString()
+        }
+        It "Preserves CPU usage" {
+            $csvData.CPUUsagePercent |
+                Should -Be $report.Summary.CPUUsagePercent.ToString()
+        }
+        It "Preserves memory usage" {
+            $csvData.MemoryUsedPercent |
+                Should -Be $report.Summary.MemoryUsedPercent.ToString()
+        }
+        It "Preserves stopped automatic service count" {
+            $csvData.StoppedAutomaticCount |
+                Should -Be $report.Summary.StoppedAutomaticCount.ToString()
+        }
+        It "Preserves recent system error count" {
+            $csvData.RecentSystemErrorCount |
+                Should -Be $report.Summary.RecentSystemErrorCount.ToString()
+        }
+        It "Preserves correlated event count" {
+            $csvData.CorrelatedEventCount |
+                Should -Be $report.Summary.CorrelatedEventCount.ToString()
         }
     }
 }

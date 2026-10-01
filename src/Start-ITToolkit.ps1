@@ -356,8 +356,9 @@ function Show-DiagnosticReportMenu {
         Write-Host "2. Generate text report"
         Write-Host "3. Generate JSON report"
         Write-Host "4. Generate filtered JSON report"
-        Write-Host "5. Generate HTML + text"
-        Write-Host "6. Generate all formats"
+        Write-Host "5. Generate CSV summary report"
+        Write-Host "6. Generate HTML + text"
+        Write-Host "7. Generate all formats"
         Write-Host ""
         Write-Host "B. Back"
         Write-Host ""
@@ -365,7 +366,7 @@ function Show-DiagnosticReportMenu {
         if ($choice.ToUpper() -eq "B") {
             return
         }
-        if ($choice -notin @("1", "2", "3", "4", "5", "6")) {
+        if ($choice -notin @("1", "2", "3", "4", "5", "6", "7")) {
             Write-Host ""
             Write-Host "Invalid selection."
             Start-Sleep -Seconds 1
@@ -387,6 +388,7 @@ function Show-DiagnosticReportMenu {
             $htmlPath = Join-Path -Path $reportDirectory -ChildPath "IT-Toolkit-Diagnostic-$timestamp.html"
             $textPath = Join-Path -Path $reportDirectory -ChildPath "IT-Toolkit-Diagnostic-$timestamp.txt"
             $jsonPath = Join-Path -Path $reportDirectory -ChildPath "IT-Toolkit-Diagnostic-$timestamp.json"
+            $csvPath = Join-Path -Path $reportDirectory -ChildPath "IT-Toolkit-Diagnostic-$timestamp.csv"
             switch ($choice) {
                 "1" {
                     Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
@@ -480,6 +482,13 @@ function Show-DiagnosticReportMenu {
                     Write-Host $jsonPath
                 }
                 "5" {
+                    Export-ITDiagnosticReportCsv -Report $report -Path $csvPath | Out-Null
+                    Write-Host "CSV summary report generated successfully."
+                    Write-Host ""
+                    Write-Host "Location:"
+                    Write-Host $csvPath
+                }
+                "6" {
                     Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
                     Export-ITDiagnosticReportText -Report $report -Path $textPath | Out-Null
                     Write-Host "HTML and text reports generated successfully."
@@ -495,10 +504,11 @@ function Show-DiagnosticReportMenu {
                         Start-Process -FilePath $htmlPath
                     }
                 }
-                "6" {
+                "7" {
                     Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
                     Export-ITDiagnosticReportText -Report $report -Path $textPath | Out-Null
                     Export-ITDiagnosticReportJson -Report $report -Path $jsonPath | Out-Null
+                    Export-ITDiagnosticReportCsv -Report $report -Path $csvPath | Out-Null
                     Write-Host "All report formats generated successfully."
                     Write-Host ""
                     Write-Host "HTML:"
@@ -509,6 +519,9 @@ function Show-DiagnosticReportMenu {
                     Write-Host ""
                     Write-Host "JSON:"
                     Write-Host $jsonPath
+                    Write-Host ""
+                    Write-Host "CSV:"
+                    Write-Host $csvPath
                     Write-Host ""
                     $openReport = Read-Host "Open the HTML report now? (Y/N)"
                     if ($openReport.ToUpper() -eq "Y") {

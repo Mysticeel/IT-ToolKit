@@ -75,6 +75,11 @@ Describe "IT-Toolkit Module Manifest" {
             Get-Command -Name Get-ITServiceDependency -Module IT-Toolkit -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
+
+        It "Exports Export-ITDiagnosticReportCsv" {
+            Get-Command -Name Export-ITDiagnosticReportCsv -Module IT-Toolkit -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
     }
 
     Context "Public command surface" {
@@ -116,46 +121,40 @@ Describe "IT-Toolkit Module Manifest" {
                 Should -Be 0
         }
 
-        It "Exports exactly 27 public functions" {
+        It "Exports exactly 28 public functions" {
             @(
                 $commands |
                     Where-Object {
                         $_.CommandType -eq 'Function'
                     }
             ).Count |
-                Should -Be 27
+                Should -Be 28
         }
 
         It "Exports only the expected public functions" {
             $expectedFunctions = @(
                 'Get-ITSystemInformation',
-
                 'Get-ITNetworkInformation',
                 'Test-ITInternetConnection',
                 'Test-ITDNSResolution',
                 'Test-ITTCPPort',
                 'Invoke-ITTraceRoute',
                 'Get-ITWiFiInformation',
-
                 'Get-ITPendingReboot',
                 'Get-ITServiceHealth',
                 'Get-ITRecentSystemErrors',
                 'Get-ITEventCorrelation',
                 'Get-ITServiceDependency',
-
                 'Get-ITDiagnosticReportData',
                 'Export-ITDiagnosticReportText',
                 'Export-ITDiagnosticReportHtml',
                 'Export-ITDiagnosticReportJson',
-
+                'Export-ITDiagnosticReportCsv',
                 'Get-ITHealthAnalysis',
-
                 'Get-ITStorageHealth',
                 'Get-ITPhysicalDiskHealth',
-
                 'Get-ITWindowsUpdateStatus',
                 'Get-ITWindowsUpdateHistory',
-
                 'Get-ITPerformanceSnapshot',
                 'Get-ITTopProcesses',
                 'Get-ITMemoryConsumers',
