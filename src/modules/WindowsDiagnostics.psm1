@@ -131,9 +131,65 @@ function Get-ITEventCorrelation {
             @{ Expression = 'LastSeen'; Descending = $true }
 }
 
+function Get-ITServiceDependency {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    $service = Get-CimInstance `
+        -ClassName Win32_Service `
+        -Filter "Name='$($Name.Replace("'", "''"))'" `
+        -ErrorAction SilentlyContinue
+
+    if (-not $service) {
+        return [PSCustomObject]@{
+            ServiceName       = $Name
+            DisplayName       = $null
+            Status            = $null
+            StartType         = $null
+            DependsOn         = @()
+            DependentServices = @()
+            Error             = "Service '$Name' was not found."
+        }
+    }
+
+    $serviceController = Get-Service `
+        -Name $service.Name `
+        -ErrorAction SilentlyContinue
+
+    $dependsOn = @()
+    $dependentServices = @()
+
+    if ($serviceController) {
+        $dependsOn = @(
+            $serviceController.ServicesDependedOn |
+                Select-Object -ExpandProperty Name
+        )
+
+        $dependentServices = @(
+            $serviceController.DependentServices |
+                Select-Object -ExpandProperty Name
+        )
+    }
+
+    [PSCustomObject]@{
+        ServiceName       = $service.Name
+        DisplayName       = $service.DisplayName
+        Status            = $service.State
+        StartType         = $service.StartMode
+        DependsOn         = $dependsOn
+        DependentServices = $dependentServices
+        Error             = $null
+    }
+}
+
 Export-ModuleMember -Function @(
     'Get-ITPendingReboot',
     'Get-ITServiceHealth',
     'Get-ITRecentSystemErrors',
-    'Get-ITEventCorrelation'
+    'Get-ITEventCorrelation',
+    'Get-ITServiceDependency'
 )
