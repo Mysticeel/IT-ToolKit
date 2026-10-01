@@ -127,7 +127,6 @@ function Get-ITDiagnosticReportData {
         }
     }
 }
-
 function Export-ITDiagnosticReportText {
     [CmdletBinding()]
     param(
@@ -363,7 +362,6 @@ function Export-ITDiagnosticReportText {
             -Encoding UTF8
     Get-Item $Path
 }
-
 function Export-ITDiagnosticReportHtml {
     [CmdletBinding()]
     param(
@@ -1371,7 +1369,6 @@ Generated locally by IT-Toolkit.
             -Encoding UTF8
     Get-Item $Path
 }
-
 function Export-ITDiagnosticReportJson {
     [CmdletBinding()]
     param(
@@ -1382,39 +1379,43 @@ function Export-ITDiagnosticReportJson {
         [ValidateNotNullOrEmpty()]
         [string]$Path,
         [ValidateRange(3, 100)]
-        [int]$Depth = 10
+        [int]$Depth = 10,
+        [ValidateSet(
+            'Metadata',
+            'System',
+            'Network',
+            'Windows',
+            'Storage',
+            'WindowsUpdate',
+            'Performance',
+            'Health',
+            'Summary'
+        )]
+        [string[]]$Include
     )
-    $directory = Split-Path `
-        -Path $Path `
-        -Parent
-    if (
-        $directory -and
-        -not (Test-Path -LiteralPath $directory)
-    ) {
-        New-Item `
-            -ItemType Directory `
-            -Path $directory `
-            -Force |
-            Out-Null
+    $directory = Split-Path -Path $Path -Parent
+    if ($directory -and -not (Test-Path -LiteralPath $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+    $exportReport = $Report
+    if ($Include) {
+        $properties = @('GeneratedAt')
+        foreach ($section in $Include) {
+            if ($properties -notcontains $section) {
+                $properties += $section
+            }
+        }
+        $exportReport = $Report | Select-Object -Property $properties
     }
     try {
-        $json = $Report |
-            ConvertTo-Json `
-                -Depth $Depth
-        $json |
-            Set-Content `
-                -Path $Path `
-                -Encoding UTF8 `
-                -ErrorAction Stop
+        $json = $exportReport | ConvertTo-Json -Depth $Depth
+        $json | Set-Content -Path $Path -Encoding UTF8 -ErrorAction Stop
     }
     catch {
         throw "Failed to export diagnostic report to JSON: $($_.Exception.Message)"
     }
-    Get-Item `
-        -Path $Path `
-        -ErrorAction Stop
+    Get-Item -Path $Path -ErrorAction Stop
 }
-
 Export-ModuleMember -Function @(
     'Get-ITDiagnosticReportData',
     'Export-ITDiagnosticReportText',
