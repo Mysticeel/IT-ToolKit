@@ -16,12 +16,12 @@ IT-Toolkit currently includes:
 |---|---|
 | System Information | Hardware, operating system, memory, uptime, storage and user information |
 | Network Diagnostics | Network adapters, internet connectivity, DNS, TCP port tests, traceroute and Wi-Fi information |
-| Windows Diagnostics | Pending reboot state, stopped automatic services and recent System errors |
+| Windows Diagnostics | Pending reboot state, stopped automatic services, recent System errors, event correlation and service dependency analysis |
 | Storage Diagnostics | Logical drive health and physical disk information |
 | Windows Update Diagnostics | Available updates and update history |
 | Performance Diagnostics | CPU, memory, processes, startup items, live performance sampling and process inspection |
 | System Health Analysis | Severity-based interpretation of diagnostic information |
-| Diagnostic Reports | HTML, text and JSON diagnostic reports |
+| Diagnostic Reports | HTML, text, JSON, filtered JSON and CSV diagnostic reports |
 
 ---
 
@@ -188,16 +188,13 @@ Test-ITDNSResolution -Name github.com
 Test a TCP port:
 
 ```powershell
-Test-ITTCPPort `
-    -ComputerName github.com `
-    -Port 443
+Test-ITTCPPort -ComputerName github.com -Port 443
 ```
 
 Trace a route:
 
 ```powershell
-Invoke-ITTraceRoute `
-    -ComputerName github.com
+Invoke-ITTraceRoute -ComputerName github.com
 ```
 
 Documentation:
@@ -217,6 +214,8 @@ Features include:
 - Pending reboot detection
 - Stopped automatic services
 - Recent Critical and Error events from the System log
+- Event correlation
+- Service dependency analysis
 
 Examples:
 
@@ -230,6 +229,18 @@ Get-ITServiceHealth
 
 ```powershell
 Get-ITRecentSystemErrors -Hours 24
+```
+
+Correlate repeated System log errors:
+
+```powershell
+Get-ITEventCorrelation -Hours 24
+```
+
+Inspect the dependencies of a Windows service:
+
+```powershell
+Get-ITServiceDependency -Name Spooler
 ```
 
 ---
@@ -326,9 +337,7 @@ Get-ITMemoryConsumers -Top 10
 Live performance sampling:
 
 ```powershell
-Get-ITPerformanceSample `
-    -Samples 10 `
-    -IntervalSeconds 1
+Get-ITPerformanceSample -Samples 10 -IntervalSeconds 1
 ```
 
 Inspect a process:
@@ -395,6 +404,8 @@ Supported formats:
 - HTML
 - Plain text
 - JSON
+- Filtered JSON
+- CSV summary
 
 Collect report data:
 
@@ -405,25 +416,31 @@ $report = Get-ITDiagnosticReportData
 Generate HTML:
 
 ```powershell
-Export-ITDiagnosticReportHtml `
-    -Report $report `
-    -Path .\reports\diagnostic-report.html
+Export-ITDiagnosticReportHtml -Report $report -Path .\reports\diagnostic-report.html
 ```
 
 Generate text:
 
 ```powershell
-Export-ITDiagnosticReportText `
-    -Report $report `
-    -Path .\reports\diagnostic-report.txt
+Export-ITDiagnosticReportText -Report $report -Path .\reports\diagnostic-report.txt
 ```
 
 Generate JSON:
 
 ```powershell
-Export-ITDiagnosticReportJson `
-    -Report $report `
-    -Path .\reports\diagnostic-report.json
+Export-ITDiagnosticReportJson -Report $report -Path .\reports\diagnostic-report.json
+```
+
+Generate a filtered JSON report:
+
+```powershell
+Export-ITDiagnosticReportJson -Report $report -Path .\reports\diagnostic-report-filtered.json -Include Metadata,Network,Summary
+```
+
+Generate a CSV summary:
+
+```powershell
+Export-ITDiagnosticReportCsv -Report $report -Path .\reports\diagnostic-report.csv
 ```
 
 The interactive toolkit also provides:
@@ -432,8 +449,10 @@ The interactive toolkit also provides:
 1. Generate HTML report
 2. Generate text report
 3. Generate JSON report
-4. Generate HTML + text
-5. Generate all formats
+4. Generate filtered JSON report
+5. Generate CSV summary report
+6. Generate HTML + text
+7. Generate all formats
 ```
 
 Documentation:
@@ -451,10 +470,7 @@ JSON reports provide a machine-readable representation of diagnostic information
 Example:
 
 ```powershell
-$json = Get-Content `
-    .\reports\diagnostic-report.json `
-    -Raw |
-    ConvertFrom-Json
+$json = Get-Content .\reports\diagnostic-report.json -Raw | ConvertFrom-Json
 ```
 
 Then access individual areas:
@@ -469,6 +485,14 @@ $json.Performance
 $json.Health
 ```
 
+Filtered JSON reports can be generated when only specific diagnostic sections are required:
+
+```powershell
+Export-ITDiagnosticReportJson -Report $report -Path .\reports\network-report.json -Include Metadata,Network,Summary
+```
+
+`GeneratedAt` is retained when JSON filtering is used.
+
 Potential use cases include:
 
 - Automation
@@ -482,9 +506,42 @@ IT-Toolkit does not automatically transmit report information anywhere.
 
 ---
 
+# CSV Integration
+
+CSV reporting provides a compact, one-row summary of important diagnostic information.
+
+Generate a CSV report:
+
+```powershell
+$report = Get-ITDiagnosticReportData
+Export-ITDiagnosticReportCsv -Report $report -Path .\reports\diagnostic-report.csv
+```
+
+The CSV summary includes values such as:
+
+- Report generation time
+- Toolkit version
+- Report schema version
+- PowerShell version
+- Overall health
+- Internet connectivity
+- DNS status
+- Pending reboot state
+- Drive free-space percentage
+- Pending update count
+- CPU usage
+- Memory usage
+- Stopped automatic service count
+- Recent System error count
+- Correlated event count
+
+CSV output is intended for compact reporting, spreadsheet analysis, and further automation.
+
+---
+
 # Public Commands
 
-The module currently exposes functions including:
+The module currently exposes 28 public functions:
 
 ```text
 Get-ITSystemInformation
@@ -499,11 +556,14 @@ Get-ITWiFiInformation
 Get-ITPendingReboot
 Get-ITServiceHealth
 Get-ITRecentSystemErrors
+Get-ITEventCorrelation
+Get-ITServiceDependency
 
 Get-ITDiagnosticReportData
 Export-ITDiagnosticReportText
 Export-ITDiagnosticReportHtml
 Export-ITDiagnosticReportJson
+Export-ITDiagnosticReportCsv
 
 Get-ITHealthAnalysis
 
@@ -534,21 +594,23 @@ src/IT-Toolkit.psd1
 ```text
 IT-Toolkit/
 │
-├── README.md
-├── CHANGELOG.md
-├── LICENSE
+├── .github/
+│   └── workflows/
+│       └── pester-tests.yml
 │
 ├── docs/
 │   ├── Diagnostic-Reports.md
 │   ├── Health-Analysis.md
 │   ├── Network-Diagnostics.md
 │   ├── Performance-Diagnostics.md
-│   └── System-Information.md
+│   ├── Storage-Diagnostics.md
+│   ├── System-Information.md
+│   ├── Windows-Diagnostics.md
+│   └── Windows-Update-Diagnostics.md
 │
 ├── src/
 │   ├── IT-Toolkit.psd1
 │   ├── Start-ITToolkit.ps1
-│   │
 │   └── modules/
 │       ├── DiagnosticReport.psm1
 │       ├── HealthAnalysis.psm1
@@ -559,7 +621,23 @@ IT-Toolkit/
 │       ├── WindowsDiagnostics.psm1
 │       └── WindowsUpdateDiagnostics.psm1
 │
-└── tests/
+├── tests/
+│   ├── DiagnosticReport.Tests.ps1
+│   ├── HealthAnalysis.Tests.ps1
+│   ├── ModuleManifest.Tests.ps1
+│   ├── NetworkDiagnostics.Tests.ps1
+│   ├── PerformanceDiagnostics.Tests.ps1
+│   ├── StorageDiagnostics.Tests.ps1
+│   ├── SystemInformation.Tests.ps1
+│   ├── WindowsDiagnostics.Tests.ps1
+│   └── WindowsUpdateDiagnostics.Tests.ps1
+│
+├── .gitignore
+├── CHANGELOG.md
+├── LICENSE
+├── PSScriptAnalyzerSettings.psd1
+├── README.md
+└── SECURITY.md
 ```
 
 Generated diagnostic reports are stored under:
@@ -605,10 +683,10 @@ IT-Toolkit uses PSScriptAnalyzer for PowerShell static analysis.
 Run:
 
 ```powershell
-Invoke-ScriptAnalyzer .\src\Start-ITToolkit.ps1
+Invoke-ScriptAnalyzer -Path .\src -Recurse -Settings .\PSScriptAnalyzerSettings.psd1
 ```
 
-No output indicates that no findings were returned for the analyzed script under the active rules.
+No output indicates that no findings were returned under the configured analyzer rules.
 
 ---
 
@@ -657,6 +735,8 @@ Review diagnostic information before sharing it externally.
 
 Generated reports should not be committed to a public repository.
 
+Filtering a JSON report or exporting a CSV summary does not anonymise or sanitise diagnostic information.
+
 ---
 
 # Development
@@ -684,6 +764,7 @@ Examples:
 v0.8.0
 v0.9.0
 v1.0.0
+v1.1.0
 ```
 
 Major releases represent significant compatibility or project milestones.
@@ -696,7 +777,7 @@ Patch releases are intended for fixes and smaller maintenance changes.
 
 # v1.0.0
 
-The v1.0.0 milestone introduces the first stable module packaging and reporting interface.
+The v1.0.0 milestone introduced the first stable module packaging and reporting interface.
 
 Highlights include:
 
@@ -714,6 +795,24 @@ Highlights include:
 - Detailed process inspection
 - Pester test coverage
 - PSScriptAnalyzer compatibility
+
+---
+
+# v1.1.0
+
+The v1.1.0 release expands Windows diagnostics and diagnostic reporting while preserving the toolkit's read-only design.
+
+Highlights include:
+
+- Diagnostic report metadata with toolkit version, schema version, PowerShell version and collection duration
+- Event correlation with `Get-ITEventCorrelation`
+- Service dependency analysis with `Get-ITServiceDependency`
+- Filtered JSON reporting with the `-Include` parameter
+- CSV diagnostic summary export with `Export-ITDiagnosticReportCsv`
+- Interactive filtered JSON and CSV report generation
+- CSV output included in the all-formats reporting option
+- Expanded Pester coverage for the v1.1.0 functionality
+- 28 public toolkit functions
 
 ---
 
