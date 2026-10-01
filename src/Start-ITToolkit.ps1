@@ -202,6 +202,7 @@ function Show-WindowsDiagnosticsMenu {
         Write-Host "1. Pending reboot status"
         Write-Host "2. Automatic services not running"
         Write-Host "3. Recent critical and error events"
+        Write-Host "4. Event correlation"
         Write-Host ""
         Write-Host "B. Back"
         Write-Host ""
@@ -255,8 +256,7 @@ function Show-WindowsDiagnosticsMenu {
                 Write-Host ""
                 Write-Host "Checking the last $hours hour(s)..."
                 Write-Host ""
-                $events = Get-ITRecentSystemErrors `
-                    -Hours $hours
+                $events = Get-ITRecentSystemErrors -Hours $hours
                 if ($events) {
                     $events |
                         Format-Table -Property TimeCreated, Id, LevelDisplayName, ProviderName -AutoSize
@@ -266,6 +266,38 @@ function Show-WindowsDiagnosticsMenu {
                 }
                 else {
                     Write-Host "No critical or error events were found."
+                }
+                Wait-ITToolkit
+            }
+            "4" {
+                Show-Header -Title "Event Correlation"
+                $hoursInput = Read-Host "Hours to check (default: 24)"
+                if ([string]::IsNullOrWhiteSpace($hoursInput)) {
+                    $hours = 24
+                }
+                elseif (
+                    $hoursInput -match '^\d+$' -and
+                    [int]$hoursInput -ge 1 -and
+                    [int]$hoursInput -le 168
+                ) {
+                    $hours = [int]$hoursInput
+                }
+                else {
+                    Write-Host ""
+                    Write-Host "Enter a value between 1 and 168 hours."
+                    Wait-ITToolkit
+                    continue
+                }
+                Write-Host ""
+                Write-Host "Correlating recent System events..."
+                Write-Host ""
+                $correlation = Get-ITEventCorrelation -Hours $hours
+                if ($correlation) {
+                    $correlation |
+                        Format-Table -Property ProviderName, EventId, Level, Count, FirstSeen, LastSeen -AutoSize
+                }
+                else {
+                    Write-Host "No matching System events were found."
                 }
                 Wait-ITToolkit
             }

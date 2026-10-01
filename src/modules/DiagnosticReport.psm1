@@ -13,6 +13,9 @@ function Get-ITDiagnosticReportData {
     $recentErrors = Get-ITRecentSystemErrors `
         -Hours 24 `
         -MaxEvents 25
+    $eventCorrelation = Get-ITEventCorrelation `
+        -Hours 24 `
+        -MaxEvents 500
     # v0.8.0 integrated diagnostics
     $storageHealth = Get-ITStorageHealth
     $physicalDisks = Get-ITPhysicalDiskHealth
@@ -79,6 +82,7 @@ function Get-ITDiagnosticReportData {
             RecentSystemErrorCount = @($recentErrors).Count
             StoppedAutomatic       = @($serviceHealth)
             RecentSystemErrors     = @($recentErrors)
+            EventCorrelation = @($eventCorrelation)
         }
         Storage = [PSCustomObject]@{
             LogicalDrives = @($storageHealth)
@@ -119,6 +123,7 @@ function Get-ITDiagnosticReportData {
             MemoryUsedPercent      = $performance.MemoryUsedPercent
             StoppedAutomaticCount  = @($serviceHealth).Count
             RecentSystemErrorCount = @($recentErrors).Count
+            CorrelatedEventCount = @($eventCorrelation).Count
         }
     }
 }
@@ -158,6 +163,7 @@ function Export-ITDiagnosticReportText {
     $lines += "Memory Usage           : $($Report.Summary.MemoryUsedPercent)%"
     $lines += "Stopped Auto Services  : $($Report.Summary.StoppedAutomaticCount)"
     $lines += "Recent System Errors   : $($Report.Summary.RecentSystemErrorCount)"
+    $lines += "Correlated Event Groups: $($Report.Summary.CorrelatedEventCount)"
     # System Information
     $lines += ""
     $lines += "=================================================="
@@ -223,6 +229,17 @@ function Export-ITDiagnosticReportText {
         foreach ($systemEvent in $Report.Windows.RecentSystemErrors) {
             $lines += "$($systemEvent.TimeCreated) | ID $($systemEvent.Id) | $($systemEvent.LevelDisplayName) | $($systemEvent.ProviderName)"
         }
+    }
+    $lines += ""
+    $lines += "Event Correlation"
+    $lines += "-----------------"
+    if (@($Report.Windows.EventCorrelation).Count -gt 0) {
+        foreach ($correlatedEvent in $Report.Windows.EventCorrelation) {
+            $lines += "$($correlatedEvent.ProviderName) | Event ID $($correlatedEvent.EventId) | $($correlatedEvent.Level) | Count: $($correlatedEvent.Count) | First: $($correlatedEvent.FirstSeen) | Last: $($correlatedEvent.LastSeen)"
+        }
+    }
+    else {
+        $lines += "No correlated System events were found."
     }
     # Storage
     $lines += ""
@@ -465,6 +482,10 @@ function Export-ITDiagnosticReportHtml {
         [PSCustomObject]@{
             Label = 'Recent System Errors'
             Value = $Report.Summary.RecentSystemErrorCount
+        }
+        [PSCustomObject]@{
+            Label = 'Correlated Event Groups'
+            Value = $Report.Summary.CorrelatedEventCount
         }
     )
     # System Information
@@ -719,6 +740,47 @@ $($rows -join "`n")
     }
     else {
         "<p>No recent Critical or Error events were found.</p>"
+    }
+    # Event correlation
+    $eventCorrelationHtml = if (@($Report.Windows.EventCorrelation).Count -gt 0) {
+        $rows = foreach ($correlatedEvent in $Report.Windows.EventCorrelation) {
+            $provider = ConvertTo-ITHtmlEncodedValue -Value $correlatedEvent.ProviderName
+            $eventId = ConvertTo-ITHtmlEncodedValue -Value $correlatedEvent.EventId
+            $level = ConvertTo-ITHtmlEncodedValue -Value $correlatedEvent.Level
+            $count = ConvertTo-ITHtmlEncodedValue -Value $correlatedEvent.Count
+            $firstSeen = ConvertTo-ITHtmlEncodedValue -Value $correlatedEvent.FirstSeen
+            $lastSeen = ConvertTo-ITHtmlEncodedValue -Value $correlatedEvent.LastSeen
+@"
+<tr>
+<td>$provider</td>
+<td>$eventId</td>
+<td>$level</td>
+<td>$count</td>
+<td>$firstSeen</td>
+<td>$lastSeen</td>
+</tr>
+"@
+        }
+@"
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Event ID</th>
+<th>Level</th>
+<th>Count</th>
+<th>First Seen</th>
+<th>Last Seen</th>
+</tr>
+</thead>
+<tbody>
+$($rows -join "`n")
+</tbody>
+</table>
+"@
+    }
+    else {
+        "<p>No correlated System events were found.</p>"
     }
     # Logical drives
     $logicalDrivesHtml = if (
@@ -1239,6 +1301,8 @@ $($networkHtml -join "`n")
 $servicesHtml
 <h3>Recent System Errors</h3>
 $eventsHtml
+<h3>Event Correlation</h3>
+$eventCorrelationHtml
 </section>
 <section>
 <h2>Storage</h2>

@@ -36,7 +36,6 @@ Describe "DiagnosticReport Module" {
         # the other integrated diagnostics can take time.
         $report = Get-ITDiagnosticReportData
     }
-
     Context "Module structure" {
         It "Exports Get-ITDiagnosticReportData" {
             Get-Command `
@@ -63,7 +62,6 @@ Describe "DiagnosticReport Module" {
                 Should -Not -BeNullOrEmpty
         }
     }
-
     Context "Unified report data" {
         It "Returns a report object" {
             $report |
@@ -109,6 +107,16 @@ Describe "DiagnosticReport Module" {
             $report.WindowsUpdate.PSObject.Properties.Name |
                 Should -Contain 'UpdateCount'
         }
+        It "Contains event correlation data" {
+            $report.Windows.PSObject.Properties.Name |
+                Should -Contain 'EventCorrelation'
+        }
+        It "Contains a correlated event count" {
+            $report.Summary.PSObject.Properties.Name |
+                Should -Contain 'CorrelatedEventCount'
+            $report.Summary.CorrelatedEventCount |
+                Should -Be @($report.Windows.EventCorrelation).Count
+        }
         It "Contains report metadata" {
             $report.Metadata |
                 Should -Not -BeNullOrEmpty
@@ -130,7 +138,6 @@ Describe "DiagnosticReport Module" {
                 Should -BeGreaterOrEqual 0
         }
     }
-
     Context "Text export" {
         BeforeAll {
             $textDirectory = Join-Path `
@@ -177,8 +184,13 @@ Describe "DiagnosticReport Module" {
             $textContent |
                 Should -Match 'HEALTH ANALYSIS'
         }
+        It "Contains event correlation" {
+            $textContent |
+                Should -Match 'Event Correlation'
+            $textContent |
+                Should -Match 'Correlated Event Groups'
+        }
     }
-
     Context "HTML export" {
         BeforeAll {
             $htmlDirectory = Join-Path `
@@ -221,12 +233,17 @@ Describe "DiagnosticReport Module" {
             $htmlContent |
                 Should -Match '<h2>Health Analysis</h2>'
         }
+        It "Contains event correlation" {
+            $htmlContent |
+                Should -Match '<h3>Event Correlation</h3>'
+            $htmlContent |
+                Should -Match 'Correlated Event Groups'
+        }
         It "Contains severity badge styling" {
             $htmlContent |
                 Should -Match 'badge healthy'
         }
     }
-
     Context "JSON export" {
         BeforeAll {
             $jsonDirectory = Join-Path `
@@ -311,6 +328,16 @@ Describe "DiagnosticReport Module" {
         It "Contains the Health section" {
             $jsonObject.Health |
                 Should -Not -BeNullOrEmpty
+        }
+        It "Preserves event correlation" {
+            $jsonObject.Windows.PSObject.Properties.Name |
+                Should -Contain 'EventCorrelation'
+            @($jsonObject.Windows.EventCorrelation).Count |
+                Should -Be @($report.Windows.EventCorrelation).Count
+        }
+        It "Preserves the correlated event count" {
+            $jsonObject.Summary.CorrelatedEventCount |
+                Should -Be $report.Summary.CorrelatedEventCount
         }
         It "Preserves the overall health status" {
             $jsonObject.Summary.OverallHealth |
