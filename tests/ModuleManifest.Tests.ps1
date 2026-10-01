@@ -70,6 +70,11 @@ Describe "IT-Toolkit Module Manifest" {
             Get-Command -Name Get-ITEventCorrelation -Module IT-Toolkit -ErrorAction SilentlyContinue |
                 Should -Not -BeNullOrEmpty
         }
+
+        It "Exports Get-ITServiceDependency" {
+            Get-Command -Name Get-ITServiceDependency -Module IT-Toolkit -ErrorAction SilentlyContinue |
+                Should -Not -BeNullOrEmpty
+        }
     }
 
     Context "Public command surface" {
@@ -111,14 +116,14 @@ Describe "IT-Toolkit Module Manifest" {
                 Should -Be 0
         }
 
-        It "Exports exactly 26 public functions" {
+        It "Exports exactly 27 public functions" {
             @(
                 $commands |
                     Where-Object {
                         $_.CommandType -eq 'Function'
                     }
             ).Count |
-                Should -Be 26
+                Should -Be 27
         }
 
         It "Exports only the expected public functions" {
@@ -136,6 +141,7 @@ Describe "IT-Toolkit Module Manifest" {
                 'Get-ITServiceHealth',
                 'Get-ITRecentSystemErrors',
                 'Get-ITEventCorrelation',
+                'Get-ITServiceDependency',
 
                 'Get-ITDiagnosticReportData',
                 'Export-ITDiagnosticReportText',

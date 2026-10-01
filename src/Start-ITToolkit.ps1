@@ -198,6 +198,7 @@ function Show-WindowsDiagnosticsMenu {
         Write-Host "2. Automatic services not running"
         Write-Host "3. Recent critical and error events"
         Write-Host "4. Event correlation"
+        Write-Host "5. Service dependency analysis"
         Write-Host ""
         Write-Host "B. Back"
         Write-Host ""
@@ -235,11 +236,7 @@ function Show-WindowsDiagnosticsMenu {
                 if ([string]::IsNullOrWhiteSpace($hoursInput)) {
                     $hours = 24
                 }
-                elseif (
-                    $hoursInput -match '^\d+$' -and
-                    [int]$hoursInput -ge 1 -and
-                    [int]$hoursInput -le 168
-                ) {
+                elseif ($hoursInput -match '^\d+$' -and [int]$hoursInput -ge 1 -and [int]$hoursInput -le 168) {
                     $hours = [int]$hoursInput
                 }
                 else {
@@ -270,11 +267,7 @@ function Show-WindowsDiagnosticsMenu {
                 if ([string]::IsNullOrWhiteSpace($hoursInput)) {
                     $hours = 24
                 }
-                elseif (
-                    $hoursInput -match '^\d+$' -and
-                    [int]$hoursInput -ge 1 -and
-                    [int]$hoursInput -le 168
-                ) {
+                elseif ($hoursInput -match '^\d+$' -and [int]$hoursInput -ge 1 -and [int]$hoursInput -le 168) {
                     $hours = [int]$hoursInput
                 }
                 else {
@@ -293,6 +286,55 @@ function Show-WindowsDiagnosticsMenu {
                 }
                 else {
                     Write-Host "No matching System events were found."
+                }
+                Wait-ITToolkit
+            }
+            "5" {
+                Show-Header -Title "Service Dependency Analysis"
+                $serviceName = Read-Host "Enter service name"
+                if ([string]::IsNullOrWhiteSpace($serviceName)) {
+                    Write-Host ""
+                    Write-Host "A service name is required."
+                    Wait-ITToolkit
+                    continue
+                }
+                Write-Host ""
+                Write-Host "Analysing service dependencies for $serviceName..."
+                Write-Host ""
+                $service = Get-ITServiceDependency -Name $serviceName
+                if ($service.Error) {
+                    Write-Host "Unable to retrieve service dependency information."
+                    Write-Host ""
+                    Write-Host "Error:"
+                    Write-Host $service.Error
+                }
+                else {
+                    Write-Host "Service Name : $($service.ServiceName)"
+                    Write-Host "Display Name : $($service.DisplayName)"
+                    Write-Host "Status       : $($service.Status)"
+                    Write-Host "Start Type   : $($service.StartType)"
+                    Write-Host ""
+                    Write-Host "Depends On"
+                    Write-Host "=========="
+                    if ($service.DependsOn.Count -gt 0) {
+                        $service.DependsOn | ForEach-Object {
+                            Write-Host "- $_"
+                        }
+                    }
+                    else {
+                        Write-Host "None"
+                    }
+                    Write-Host ""
+                    Write-Host "Dependent Services"
+                    Write-Host "=================="
+                    if ($service.DependentServices.Count -gt 0) {
+                        $service.DependentServices | ForEach-Object {
+                            Write-Host "- $_"
+                        }
+                    }
+                    else {
+                        Write-Host "None"
+                    }
                 }
                 Wait-ITToolkit
             }
