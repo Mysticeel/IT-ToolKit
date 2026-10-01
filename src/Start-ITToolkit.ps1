@@ -310,24 +310,17 @@ function Show-DiagnosticReportMenu {
         try {
             $report = Get-ITDiagnosticReportData
             $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-            $reportDirectory = Join-Path -Path $PSScriptRoot -ChildPath "..
-eports"
-            $reportDirectory = [System.IO.Path]::GetFullPath(
-                $reportDirectory
-            )
+            $repoRoot = Split-Path -Path $PSScriptRoot -Parent
+            $reportDirectory = Join-Path -Path $repoRoot -ChildPath "reports"
             if (-not (Test-Path -LiteralPath $reportDirectory)) {
-                New-Item -ItemType Directory -Path $reportDirectory -Force |
-                    Out-Null
+                New-Item -ItemType Directory -Path $reportDirectory -Force | Out-Null
             }
             $htmlPath = Join-Path -Path $reportDirectory -ChildPath "IT-Toolkit-Diagnostic-$timestamp.html"
             $textPath = Join-Path -Path $reportDirectory -ChildPath "IT-Toolkit-Diagnostic-$timestamp.txt"
             $jsonPath = Join-Path -Path $reportDirectory -ChildPath "IT-Toolkit-Diagnostic-$timestamp.json"
             switch ($choice) {
                 "1" {
-                    Export-ITDiagnosticReportHtml `
-                        -Report $report `
-                        -Path $htmlPath |
-                        Out-Null
+                    Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
                     Write-Host "HTML report generated successfully."
                     Write-Host ""
                     Write-Host "Location:"
@@ -335,38 +328,26 @@ eports"
                     Write-Host ""
                     $openReport = Read-Host "Open the report now? (Y/N)"
                     if ($openReport.ToUpper() -eq "Y") {
-                        Start-Process $htmlPath
+                        Start-Process -FilePath $htmlPath
                     }
                 }
                 "2" {
-                    Export-ITDiagnosticReportText `
-                        -Report $report `
-                        -Path $textPath |
-                        Out-Null
+                    Export-ITDiagnosticReportText -Report $report -Path $textPath | Out-Null
                     Write-Host "Text report generated successfully."
                     Write-Host ""
                     Write-Host "Location:"
                     Write-Host $textPath
                 }
                 "3" {
-                    Export-ITDiagnosticReportJson `
-                        -Report $report `
-                        -Path $jsonPath |
-                        Out-Null
+                    Export-ITDiagnosticReportJson -Report $report -Path $jsonPath | Out-Null
                     Write-Host "JSON report generated successfully."
                     Write-Host ""
                     Write-Host "Location:"
                     Write-Host $jsonPath
                 }
                 "4" {
-                    Export-ITDiagnosticReportHtml `
-                        -Report $report `
-                        -Path $htmlPath |
-                        Out-Null
-                    Export-ITDiagnosticReportText `
-                        -Report $report `
-                        -Path $textPath |
-                        Out-Null
+                    Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
+                    Export-ITDiagnosticReportText -Report $report -Path $textPath | Out-Null
                     Write-Host "HTML and text reports generated successfully."
                     Write-Host ""
                     Write-Host "HTML:"
@@ -377,22 +358,13 @@ eports"
                     Write-Host ""
                     $openReport = Read-Host "Open the HTML report now? (Y/N)"
                     if ($openReport.ToUpper() -eq "Y") {
-                        Start-Process $htmlPath
+                        Start-Process -FilePath $htmlPath
                     }
                 }
                 "5" {
-                    Export-ITDiagnosticReportHtml `
-                        -Report $report `
-                        -Path $htmlPath |
-                        Out-Null
-                    Export-ITDiagnosticReportText `
-                        -Report $report `
-                        -Path $textPath |
-                        Out-Null
-                    Export-ITDiagnosticReportJson `
-                        -Report $report `
-                        -Path $jsonPath |
-                        Out-Null
+                    Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
+                    Export-ITDiagnosticReportText -Report $report -Path $textPath | Out-Null
+                    Export-ITDiagnosticReportJson -Report $report -Path $jsonPath | Out-Null
                     Write-Host "All report formats generated successfully."
                     Write-Host ""
                     Write-Host "HTML:"
@@ -406,7 +378,7 @@ eports"
                     Write-Host ""
                     $openReport = Read-Host "Open the HTML report now? (Y/N)"
                     if ($openReport.ToUpper() -eq "Y") {
-                        Start-Process $htmlPath
+                        Start-Process -FilePath $htmlPath
                     }
                 }
             }
