@@ -1,6 +1,7 @@
 function Get-ITDiagnosticReportData {
     [CmdletBinding()]
     param()
+    $collectionStart = Get-Date
     # Core diagnostic data
     $systemInfo = Get-ITSystemInformation
     $networkInfo = Get-ITNetworkInformation |
@@ -22,8 +23,19 @@ function Get-ITDiagnosticReportData {
     $topMemory = Get-ITMemoryConsumers `
         -Top 10
     $healthAnalysis = Get-ITHealthAnalysis
+    $collectionEnd = Get-Date
+    $collectionDurationSeconds = [math]::Round(
+        ($collectionEnd - $collectionStart).TotalSeconds,
+        2
+    )
     [PSCustomObject]@{
         GeneratedAt = Get-Date
+        Metadata = [PSCustomObject]@{
+            ToolkitVersion            = '1.1.0'
+            ReportSchemaVersion       = 1
+            PowerShellVersion         = $PSVersionTable.PSVersion.ToString()
+            CollectionDurationSeconds = $collectionDurationSeconds
+        }
         System = [PSCustomObject]@{
             ComputerName     = $systemInfo.ComputerName
             Manufacturer     = $systemInfo.Manufacturer
@@ -123,6 +135,14 @@ function Export-ITDiagnosticReportText {
     $lines = @()
     $lines += "IT-Toolkit Diagnostic Report"
     $lines += "Generated: $($Report.GeneratedAt)"
+    $lines += ""
+    $lines += "=================================================="
+    $lines += "REPORT METADATA"
+    $lines += "=================================================="
+    $lines += "Toolkit Version       : $($Report.Metadata.ToolkitVersion)"
+    $lines += "Report Schema Version : $($Report.Metadata.ReportSchemaVersion)"
+    $lines += "PowerShell Version    : $($Report.Metadata.PowerShellVersion)"
+    $lines += "Collection Duration   : $($Report.Metadata.CollectionDurationSeconds) seconds"
     $lines += ""
     # Summary
     $lines += "=================================================="
@@ -336,7 +356,6 @@ function Export-ITDiagnosticReportHtml {
         [ValidateNotNullOrEmpty()]
         [string]$Path
     )
-
     function ConvertTo-ITHtmlEncodedValue {
         param(
             [AllowNull()]
@@ -349,7 +368,6 @@ function Export-ITDiagnosticReportHtml {
             [string]$Value
         )
     }
-
     function ConvertTo-ITTableRows {
         param(
             [Parameter(Mandatory)]
@@ -364,7 +382,6 @@ function Export-ITDiagnosticReportHtml {
         }
         return $htmlRows
     }
-
     function Get-ITSeverityClass {
         param(
             [AllowNull()]
@@ -388,6 +405,25 @@ function Export-ITDiagnosticReportHtml {
             }
         }
     }
+    # Report metadata
+    $metadataRows = @(
+        [PSCustomObject]@{
+            Label = 'Toolkit Version'
+            Value = $Report.Metadata.ToolkitVersion
+        }
+        [PSCustomObject]@{
+            Label = 'Report Schema Version'
+            Value = $Report.Metadata.ReportSchemaVersion
+        }
+        [PSCustomObject]@{
+            Label = 'PowerShell Version'
+            Value = $Report.Metadata.PowerShellVersion
+        }
+        [PSCustomObject]@{
+            Label = 'Collection Duration'
+            Value = "$($Report.Metadata.CollectionDurationSeconds) seconds"
+        }
+    )
     # Summary
     $summaryRows = @(
         [PSCustomObject]@{
@@ -588,6 +624,8 @@ function Export-ITDiagnosticReportHtml {
             Value = "$($Report.Performance.UptimeDays) day(s), $($Report.Performance.UptimeHours) hour(s)"
         }
     )
+    $metadataHtml = ConvertTo-ITTableRows `
+        -Rows $metadataRows
     $summaryHtml = ConvertTo-ITTableRows `
         -Rows $summaryRows
     $systemHtml = ConvertTo-ITTableRows `
@@ -1139,6 +1177,14 @@ tbody tr:hover {
 <h1>IT-Toolkit Diagnostic Report</h1>
 <p>Generated: $generatedAt</p>
 </header>
+<section>
+<h2>Report Metadata</h2>
+<table>
+<tbody>
+$($metadataHtml -join "`n")
+</tbody>
+</table>
+</section>
 <section>
 <h2>Summary</h2>
 <div class="health-banner">
