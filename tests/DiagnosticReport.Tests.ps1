@@ -391,4 +391,115 @@ Describe "DiagnosticReport Module" {
                 Should -Throw
         }
     }
+    Context "JSON filtering" {
+        BeforeAll {
+            $filteredDirectory = Join-Path $TestDrive "json-filtered"
+            $filteredPath = Join-Path $filteredDirectory "filtered-report.json"
+            Export-ITDiagnosticReportJson `
+                -Report $report `
+                -Path $filteredPath `
+                -Include Metadata,Network,Summary |
+                Out-Null
+            $filteredContent = Get-Content -Path $filteredPath -Raw
+            $filteredObject = $filteredContent | ConvertFrom-Json
+        }
+        It "Creates a filtered JSON report" {
+            Test-Path $filteredPath |
+                Should -BeTrue
+        }
+        It "Creates valid filtered JSON" {
+            {
+                $filteredContent | ConvertFrom-Json
+            } | Should -Not -Throw
+        }
+        It "Always includes GeneratedAt" {
+            $filteredObject.GeneratedAt |
+                Should -Not -BeNullOrEmpty
+        }
+        It "Includes requested Metadata section" {
+            $filteredObject.Metadata |
+                Should -Not -BeNullOrEmpty
+        }
+        It "Includes requested Network section" {
+            $filteredObject.Network |
+                Should -Not -BeNullOrEmpty
+        }
+        It "Includes requested Summary section" {
+            $filteredObject.Summary |
+                Should -Not -BeNullOrEmpty
+        }
+        It "Excludes unrequested System section" {
+            $filteredObject.PSObject.Properties.Name |
+                Should -Not -Contain "System"
+        }
+        It "Excludes unrequested Windows section" {
+            $filteredObject.PSObject.Properties.Name |
+                Should -Not -Contain "Windows"
+        }
+        It "Excludes unrequested Storage section" {
+            $filteredObject.PSObject.Properties.Name |
+                Should -Not -Contain "Storage"
+        }
+        It "Excludes unrequested WindowsUpdate section" {
+            $filteredObject.PSObject.Properties.Name |
+                Should -Not -Contain "WindowsUpdate"
+        }
+        It "Excludes unrequested Performance section" {
+            $filteredObject.PSObject.Properties.Name |
+                Should -Not -Contain "Performance"
+        }
+        It "Excludes unrequested Health section" {
+            $filteredObject.PSObject.Properties.Name |
+                Should -Not -Contain "Health"
+        }
+        It "Preserves values within requested sections" {
+            $filteredObject.Metadata.ToolkitVersion |
+                Should -Be $report.Metadata.ToolkitVersion
+            $filteredObject.Network.InterfaceAlias |
+                Should -Be $report.Network.InterfaceAlias
+            $filteredObject.Summary.OverallHealth |
+                Should -Be $report.Summary.OverallHealth
+        }
+        It "Supports filtering to a single section" {
+            $singlePath = Join-Path $filteredDirectory "health-only.json"
+            Export-ITDiagnosticReportJson `
+                -Report $report `
+                -Path $singlePath `
+                -Include Health |
+                Out-Null
+            $singleObject = Get-Content -Path $singlePath -Raw |
+                ConvertFrom-Json
+            $singleObject.PSObject.Properties.Name |
+                Should -Contain "GeneratedAt"
+            $singleObject.PSObject.Properties.Name |
+                Should -Contain "Health"
+            $singleObject.PSObject.Properties.Name |
+                Should -Not -Contain "Summary"
+            $singleObject.PSObject.Properties.Name.Count |
+                Should -Be 2
+        }
+        It "Does not duplicate sections when Include contains duplicates" {
+            $duplicatePath = Join-Path $filteredDirectory "duplicate-sections.json"
+            Export-ITDiagnosticReportJson `
+                -Report $report `
+                -Path $duplicatePath `
+                -Include Network,Network,Summary |
+                Out-Null
+            $duplicateObject = Get-Content -Path $duplicatePath -Raw |
+                ConvertFrom-Json
+            @(
+                $duplicateObject.PSObject.Properties.Name |
+                    Where-Object { $_ -eq "Network" }
+            ).Count |
+                Should -Be 1
+        }
+        It "Rejects an invalid report section" {
+            {
+                Export-ITDiagnosticReportJson `
+                    -Report $report `
+                    -Path $filteredPath `
+                    -Include "InvalidSection"
+            } | Should -Throw
+        }
+    }
 }

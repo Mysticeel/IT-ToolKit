@@ -355,8 +355,9 @@ function Show-DiagnosticReportMenu {
         Write-Host "1. Generate HTML report"
         Write-Host "2. Generate text report"
         Write-Host "3. Generate JSON report"
-        Write-Host "4. Generate HTML + text"
-        Write-Host "5. Generate all formats"
+        Write-Host "4. Generate filtered JSON report"
+        Write-Host "5. Generate HTML + text"
+        Write-Host "6. Generate all formats"
         Write-Host ""
         Write-Host "B. Back"
         Write-Host ""
@@ -364,7 +365,7 @@ function Show-DiagnosticReportMenu {
         if ($choice.ToUpper() -eq "B") {
             return
         }
-        if ($choice -notin @("1", "2", "3", "4", "5")) {
+        if ($choice -notin @("1", "2", "3", "4", "5", "6")) {
             Write-Host ""
             Write-Host "Invalid selection."
             Start-Sleep -Seconds 1
@@ -414,6 +415,71 @@ function Show-DiagnosticReportMenu {
                     Write-Host $jsonPath
                 }
                 "4" {
+                    Show-Header -Title "Filtered JSON Report"
+                    Write-Host "Available sections:"
+                    Write-Host ""
+                    Write-Host "1. Metadata"
+                    Write-Host "2. System"
+                    Write-Host "3. Network"
+                    Write-Host "4. Windows"
+                    Write-Host "5. Storage"
+                    Write-Host "6. Windows Update"
+                    Write-Host "7. Performance"
+                    Write-Host "8. Health"
+                    Write-Host "9. Summary"
+                    Write-Host ""
+                    Write-Host "GeneratedAt is always included."
+                    Write-Host ""
+                    $sectionInput = Read-Host "Enter section numbers separated by commas (example: 1,3,9)"
+                    if ([string]::IsNullOrWhiteSpace($sectionInput)) {
+                        Write-Host ""
+                        Write-Host "At least one section must be selected."
+                        Wait-ITToolkit
+                        continue
+                    }
+                    $sectionMap = @{
+                        "1" = "Metadata"
+                        "2" = "System"
+                        "3" = "Network"
+                        "4" = "Windows"
+                        "5" = "Storage"
+                        "6" = "WindowsUpdate"
+                        "7" = "Performance"
+                        "8" = "Health"
+                        "9" = "Summary"
+                    }
+                    $selectedSections = @()
+                    $invalidSelection = $false
+                    foreach ($sectionNumber in ($sectionInput -split ",")) {
+                        $sectionNumber = $sectionNumber.Trim()
+                        if (-not $sectionMap.ContainsKey($sectionNumber)) {
+                            $invalidSelection = $true
+                            break
+                        }
+                        $sectionName = $sectionMap[$sectionNumber]
+                        if ($selectedSections -notcontains $sectionName) {
+                            $selectedSections += $sectionName
+                        }
+                    }
+                    if ($invalidSelection -or $selectedSections.Count -eq 0) {
+                        Write-Host ""
+                        Write-Host "Invalid section selection. Use numbers 1 to 9 separated by commas."
+                        Wait-ITToolkit
+                        continue
+                    }
+                    Export-ITDiagnosticReportJson -Report $report -Path $jsonPath -Include $selectedSections | Out-Null
+                    Write-Host ""
+                    Write-Host "Filtered JSON report generated successfully."
+                    Write-Host ""
+                    Write-Host "Included sections:"
+                    foreach ($section in $selectedSections) {
+                        Write-Host "- $section"
+                    }
+                    Write-Host ""
+                    Write-Host "Location:"
+                    Write-Host $jsonPath
+                }
+                "5" {
                     Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
                     Export-ITDiagnosticReportText -Report $report -Path $textPath | Out-Null
                     Write-Host "HTML and text reports generated successfully."
@@ -429,7 +495,7 @@ function Show-DiagnosticReportMenu {
                         Start-Process -FilePath $htmlPath
                     }
                 }
-                "5" {
+                "6" {
                     Export-ITDiagnosticReportHtml -Report $report -Path $htmlPath | Out-Null
                     Export-ITDiagnosticReportText -Report $report -Path $textPath | Out-Null
                     Export-ITDiagnosticReportJson -Report $report -Path $jsonPath | Out-Null
