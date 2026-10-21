@@ -1,0 +1,103 @@
+name: "Bug Report"
+description: "Report a problem with IT-Toolkit."
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue with IT-Toolkit.
+
+        Please provide as much information as possible.
+        Do not include passwords, usernames, internal
+        hostnames, IP addresses or sensitive information.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clearly describe the problem.
+      placeholder: Describe what went wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Explain how to reproduce the issue.
+      placeholder: |
+        1. Open PowerShell
+        2. Run the command
+        3. Observe the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behaviour
+      description: What happened instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Affected Module
+      description: Which part of IT-Toolkit is affected?
+      options:
+        - System Information
+        - Network Diagnostics
+        - Windows Diagnostics
+        - Diagnostic Report
+        - Health Analysis
+        - Interactive Menu
+        - Installation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows Version
+      placeholder: "Windows 11 24H2"
+    validations:
+      required: true
+
+  - type: input
+    id: powershell
+    attributes:
+      label: PowerShell Version
+      description: "Run $PSVersionTable.PSVersion"
+      placeholder: "5.1 or 7.x"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Messages or Logs
+      description: Paste sanitized error output if available.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have checked for existing issues.
+          required: true
+        - label: I have removed sensitive information.
+          required: true
