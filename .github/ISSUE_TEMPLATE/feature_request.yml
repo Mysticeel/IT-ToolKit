@@ -1,0 +1,110 @@
+
+name: "Feature Request"
+description: "Suggest a new feature or improvement for IT-Toolkit."
+title: "[Feature]: "
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting an improvement to IT-Toolkit!
+
+        IT-Toolkit is independently developed and maintained
+        by Mysticeel.
+
+        Feature requests are reviewed at the project owner's
+        discretion. Submission does not guarantee implementation.
+
+        Please do not include confidential or sensitive information.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What problem would this feature solve?
+      placeholder: |
+        Describe the IT support or troubleshooting problem
+        that this feature would help address.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you would like the feature to work.
+      placeholder: |
+        Explain the proposed functionality and how
+        it could improve IT-Toolkit.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Related Module
+      description: Which area of IT-Toolkit would this improve?
+      options:
+        - System Information
+        - Network Diagnostics
+        - Windows Diagnostics
+        - Diagnostic Report
+        - Health Analysis
+        - Interactive Menu
+        - New Module
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Suggested Priority
+      description: How important is this feature to your use case?
+      options:
+        - Low - Nice to have
+        - Medium - Useful improvement
+        - High - Significant troubleshooting benefit
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Usage
+      description: Provide an example command or workflow.
+      placeholder: |
+        Example:
+        Test-NetworkLatency -ComputerName "server01"
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any other approaches?
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Add any relevant context or screenshots.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Submission Checklist
+      options:
+        - label: I have checked for existing feature requests.
+          required: true
+        - label: I understand that implementation is at the project owner's discretion.
+          required: true
+        - label: I have removed sensitive or confidential information.
+          required: true
