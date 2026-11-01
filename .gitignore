@@ -32,3 +32,6 @@ Desktop.ini
 
 # macOS
 .DS_Store
+# Pester coverage reports
+coverage.xml
+test-results/

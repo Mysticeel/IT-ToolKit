@@ -1,10 +1,11 @@
+
 @{
+    ExcludeRules = @(
+        'PSUseSingularNouns'
+    )
+
     Severity = @(
         'Error'
         'Warning'
-    )
-
-    ExcludeRules = @(
-        'PSUseSingularNouns'
     )
 }

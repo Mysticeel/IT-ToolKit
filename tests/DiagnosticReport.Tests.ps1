@@ -34,7 +34,7 @@ Describe "DiagnosticReport Module" {
         Import-Module $reportModulePath -Force
         # Generate the report once because Windows Update and
         # the other integrated diagnostics can take time.
-        $report = Get-ITDiagnosticReportData
+        Set-Variable -Name report -Value (Get-ITDiagnosticReportData)
     }
     Context "Module structure" {
         It "Exports Get-ITDiagnosticReportData" {
@@ -156,9 +156,9 @@ Describe "DiagnosticReport Module" {
                 -Report $report `
                 -Path $textPath |
                 Out-Null
-            $textContent = Get-Content `
+            Set-Variable -Name textContent -Value (Get-Content `
                 -Path $textPath `
-                -Raw
+                -Raw)
         }
         It "Creates the text report" {
             Test-Path $textPath |
@@ -209,9 +209,9 @@ Describe "DiagnosticReport Module" {
                 -Report $report `
                 -Path $htmlPath |
                 Out-Null
-            $htmlContent = Get-Content `
+            Set-Variable -Name htmlContent -Value (Get-Content `
                 -Path $htmlPath `
-                -Raw
+                -Raw)
         }
         It "Creates the HTML report" {
             Test-Path $htmlPath |
@@ -265,8 +265,8 @@ Describe "DiagnosticReport Module" {
             $jsonContent = Get-Content `
                 -Path $jsonPath `
                 -Raw
-            $jsonObject = $jsonContent |
-                ConvertFrom-Json
+            Set-Variable -Name jsonObject -Value ($jsonContent |
+                ConvertFrom-Json)
         }
         It "Creates the JSON report" {
             Test-Path $jsonPath |
@@ -407,7 +407,7 @@ Describe "DiagnosticReport Module" {
                 -Include Metadata,Network,Summary |
                 Out-Null
             $filteredContent = Get-Content -Path $filteredPath -Raw
-            $filteredObject = $filteredContent | ConvertFrom-Json
+            Set-Variable -Name filteredObject -Value ($filteredContent | ConvertFrom-Json)
         }
         It "Creates a filtered JSON report" {
             Test-Path $filteredPath |
@@ -517,7 +517,7 @@ Describe "DiagnosticReport Module" {
                 -Report $report `
                 -Path $csvPath |
                 Out-Null
-            $csvData = Import-Csv -Path $csvPath
+            Set-Variable -Name csvData -Value (Import-Csv -Path $csvPath)
         }
         It "Creates the CSV report" {
             Test-Path $csvPath |

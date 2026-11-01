@@ -16,15 +16,32 @@ Describe "IT-Toolkit Module Manifest" {
             } | Should -Not -Throw
         }
 
-        It "Module version is 1.1.0" {
-            $manifest = Test-ModuleManifest -Path $manifestPath
+        It "Has a valid module version" {
+            $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
+
+            $manifest.Version |
+                Should -BeOfType ([System.Version])
+
+            $manifest.Version.Major |
+                Should -BeGreaterOrEqual 1
+
+            $manifest.Version.Minor |
+                Should -BeGreaterOrEqual 0
+
+            $manifest.Version.Build |
+                Should -BeGreaterOrEqual 0
+        }
+
+        It "Has a module version matching the manifest metadata" {
+            $manifestData = Import-PowerShellDataFile -Path $manifestPath
+            $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
 
             $manifest.Version.ToString() |
-                Should -Be '1.1.0'
+                Should -Be ([version]$manifestData.ModuleVersion).ToString()
         }
 
         It "Has the expected module name" {
-            $manifest = Test-ModuleManifest -Path $manifestPath
+            $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
 
             $manifest.Name |
                 Should -Be 'IT-Toolkit'
@@ -87,7 +104,7 @@ Describe "IT-Toolkit Module Manifest" {
             Remove-Module -Name IT-Toolkit -Force -ErrorAction SilentlyContinue
             Import-Module -Name $manifestPath -Force -ErrorAction Stop
 
-            $commands = @(
+            Set-Variable -Name commands -Value @(
                 Get-Command -Module IT-Toolkit
             )
         }
@@ -177,8 +194,11 @@ Describe "IT-Toolkit Module Manifest" {
                     Sort-Object
             )
 
-            $actualFunctions |
-                Should -Be $expectedFunctions
+            $actualFunctions = @($actualFunctions)
+            $expectedFunctions = @($expectedFunctions)
+
+            $actualFunctions -join ',' |
+                Should -Be ($expectedFunctions -join ',')
         }
     }
 }

@@ -14,7 +14,6 @@ Import-Module $updateModulePath -Force
 Import-Module $performanceModulePath -Force
 Import-Module $healthModulePath -Force
 
-
 Describe "HealthAnalysis Module" {
 
     Context "Module structure" {
@@ -25,11 +24,10 @@ Describe "HealthAnalysis Module" {
         }
     }
 
-
     Context "Health analysis output" {
 
         BeforeAll {
-            $health = Get-ITHealthAnalysis
+            Set-Variable -Name health -Value (Get-ITHealthAnalysis)
         }
 
         It "Returns an analysis object" {
@@ -101,11 +99,10 @@ Describe "HealthAnalysis Module" {
         }
     }
 
-
     Context "Finding structure" {
 
         BeforeAll {
-            $health = Get-ITHealthAnalysis
+            Set-Variable -Name health -Value (Get-ITHealthAnalysis)
         }
 
         It "Every finding has an Area" {

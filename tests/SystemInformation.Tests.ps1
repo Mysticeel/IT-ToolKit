@@ -5,7 +5,7 @@ Import-Module $modulePath -Force
 Describe "Get-ITSystemInformation" {
 
     BeforeAll {
-        $result = Get-ITSystemInformation
+        Set-Variable -Name result -Value (Get-ITSystemInformation)
     }
 
     It "Returns an object" {
