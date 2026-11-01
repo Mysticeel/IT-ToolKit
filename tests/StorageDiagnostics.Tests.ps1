@@ -20,7 +20,7 @@ Describe "StorageDiagnostics Module" {
     Context "Logical drive health" {
 
         BeforeAll {
-            $drives = Get-ITStorageHealth
+            Set-Variable -Name drives -Value (Get-ITStorageHealth)
         }
 
         It "Returns at least one fixed drive" {

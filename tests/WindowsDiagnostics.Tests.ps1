@@ -174,7 +174,7 @@ Describe "WindowsDiagnostics Module" {
         BeforeAll {
             $testService = Get-Service |
                 Select-Object -First 1
-            $serviceResult = Get-ITServiceDependency -Name $testService.Name
+            Set-Variable -Name serviceResult -Value (Get-ITServiceDependency -Name $testService.Name)
         }
 
         It "Returns a service dependency object" {

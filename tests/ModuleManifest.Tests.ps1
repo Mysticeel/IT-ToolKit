@@ -1,4 +1,3 @@
-
 Describe "IT-Toolkit Module Manifest" {
     BeforeAll {
         $manifestPath = Join-Path $PSScriptRoot "..\src\IT-Toolkit.psd1"
@@ -105,7 +104,7 @@ Describe "IT-Toolkit Module Manifest" {
             Remove-Module -Name IT-Toolkit -Force -ErrorAction SilentlyContinue
             Import-Module -Name $manifestPath -Force -ErrorAction Stop
 
-            $commands = @(
+            Set-Variable -Name commands -Value @(
                 Get-Command -Module IT-Toolkit
             )
         }

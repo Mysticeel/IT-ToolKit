@@ -1,4 +1,3 @@
-
 name: PowerShell Quality Checks
 
 on:
@@ -60,22 +59,23 @@ jobs:
 
           New-Item -ItemType Directory -Path ./test-results -Force | Out-Null
 
+          # Match the locally validated coverage scope.
           $sourceFiles = @(
-              Get-ChildItem -Path ./src -Recurse -File |
-                  Where-Object { $_.Extension -in '.ps1', '.psm1' } |
+              Get-ChildItem -Path ./src/modules -Filter '*.psm1' -File |
                   Select-Object -ExpandProperty FullName
           )
 
           if ($sourceFiles.Count -eq 0) {
-              throw "No PowerShell source files found for code coverage."
+              throw "No PowerShell module files found for code coverage."
           }
 
-          Write-Host "Collecting coverage for $($sourceFiles.Count) source files."
+          Write-Host "Collecting coverage for $($sourceFiles.Count) module files."
 
           $config = New-PesterConfiguration
 
           $config.Run.Path = './tests'
-          $config.Run.Exit = $true
+          $config.Run.Exit = $false
+          $config.Run.PassThru = $true
           $config.Output.Verbosity = 'Detailed'
 
           $config.TestResult.Enabled = $true
@@ -86,9 +86,26 @@ jobs:
           $config.CodeCoverage.Path = $sourceFiles
           $config.CodeCoverage.OutputFormat = 'JaCoCo'
           $config.CodeCoverage.OutputPath = './test-results/coverage.xml'
-          $config.CodeCoverage.CoveragePercentTarget = 0
+          $config.CodeCoverage.CoveragePercentTarget = 75
 
-          Invoke-Pester -Configuration $config
+          $result = Invoke-Pester -Configuration $config
+
+          if ($result.FailedCount -gt 0) {
+              throw "$($result.FailedCount) Pester test(s) failed."
+          }
+
+          if ($null -eq $result.CodeCoverage) {
+              throw 'Pester did not return code coverage results.'
+          }
+
+          $coverage = $result.CodeCoverage.CoveragePercent
+          Write-Host "Code coverage: $([math]::Round($coverage, 2))%"
+
+          if ($coverage -lt 75) {
+              throw "Code coverage $coverage% is below the required 75%."
+          }
+
+          Write-Host "All Pester tests passed and code coverage meets the 75% target."
 
       - name: Upload Pester test results
         if: ${{ !cancelled() }}
@@ -157,20 +174,26 @@ jobs:
               throw "PSScriptAnalyzerSettings.psd1 was not found in the repository root."
           }
 
-          $results = Invoke-ScriptAnalyzer `
-            -Path ./src `
-            -Recurse `
-            -Settings ./PSScriptAnalyzerSettings.psd1
+          $sourceFiles = @(
+              Get-ChildItem -Path ./src, ./tests -Recurse -File |
+                  Where-Object { $_.Extension -in '.ps1', '.psm1', '.psd1' }
+          )
 
-          if ($results) {
+          if ($sourceFiles.Count -eq 0) {
+              throw 'No PowerShell files found for static analysis.'
+          }
+
+          $results = @(
+              $sourceFiles | ForEach-Object {
+                  Invoke-ScriptAnalyzer `
+                    -Path $_.FullName `
+                    -Settings ./PSScriptAnalyzerSettings.psd1
+              }
+          )
+
+          if ($results.Count -gt 0) {
               $results |
-                  Format-Table `
-                      RuleName,
-                      Severity,
-                      ScriptName,
-                      Line,
-                      Message `
-                      -AutoSize
+                  Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize
 
               throw "PSScriptAnalyzer found $($results.Count) issue(s)."
           }

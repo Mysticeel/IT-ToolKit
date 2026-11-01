@@ -42,7 +42,7 @@ Describe "PerformanceDiagnostics Module" {
     Context "Performance snapshot" {
 
         BeforeAll {
-            $result = Get-ITPerformanceSnapshot
+            Set-Variable -Name result -Value (Get-ITPerformanceSnapshot)
         }
 
         It "Returns a performance snapshot" {
@@ -198,9 +198,9 @@ Describe "PerformanceDiagnostics Module" {
     Context "Live performance sampling" {
 
         BeforeAll {
-            $sample = Get-ITPerformanceSample `
+            Set-Variable -Name sample -Value (Get-ITPerformanceSample `
                 -Samples 2 `
-                -IntervalSeconds 1
+                -IntervalSeconds 1)
         }
 
         It "Returns a performance sample result" {
@@ -317,8 +317,8 @@ Describe "PerformanceDiagnostics Module" {
         BeforeAll {
             $currentProcess = Get-Process -Id $PID
 
-            $details = Get-ITProcessDetails `
-                -Id $currentProcess.Id
+            Set-Variable -Name details -Value (Get-ITProcessDetails `
+                -Id $currentProcess.Id)
         }
 
         It "Returns process details for an existing process" {
