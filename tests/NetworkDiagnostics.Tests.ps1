@@ -562,6 +562,8 @@ Describe "NetworkDiagnostics Module" {
 
         It "Returns connected Wi-Fi information" {
             Mock netsh {
+                $global:LASTEXITCODE = 0
+
                 @(
                     '    Name                   : Wi-Fi'
                     '    Description            : Intel Wireless Adapter'
@@ -594,6 +596,7 @@ Describe "NetworkDiagnostics Module" {
 
         It "Returns disconnected when no Wi-Fi interface is found" {
             Mock netsh {
+                $global:LASTEXITCODE = 0
                 'There is no wireless interface on the system.'
             } -ModuleName NetworkDiagnostics
 
