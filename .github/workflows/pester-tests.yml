@@ -1,3 +1,4 @@
+
 name: PowerShell Quality Checks
 
 on:
@@ -24,17 +25,22 @@ jobs:
       - name: Install Pester
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+
           Install-Module Pester `
             -RequiredVersion 6.2.0 `
             -Scope CurrentUser `
             -Force `
-            -SkipPublisherCheck
+            -SkipPublisherCheck `
+            -ErrorAction Stop
 
       - name: Run Pester tests
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+
           Remove-Module Pester -Force -ErrorAction SilentlyContinue
-          Import-Module Pester -RequiredVersion 6.2.0 -Force
+          Import-Module Pester -RequiredVersion 6.2.0 -Force -ErrorAction Stop
 
           Invoke-Pester `
             -Path ./tests `
@@ -51,14 +57,23 @@ jobs:
       - name: Install PSScriptAnalyzer
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+
           Install-Module PSScriptAnalyzer `
+            -RequiredVersion 1.25.0 `
             -Scope CurrentUser `
-            -Force
+            -Force `
+            -ErrorAction Stop
 
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          Import-Module PSScriptAnalyzer -Force
+          $ErrorActionPreference = 'Stop'
+
+          Import-Module PSScriptAnalyzer `
+            -RequiredVersion 1.25.0 `
+            -Force `
+            -ErrorAction Stop
 
           if (-not (Test-Path ./PSScriptAnalyzerSettings.psd1)) {
               throw "PSScriptAnalyzerSettings.psd1 was not found in the repository root."
