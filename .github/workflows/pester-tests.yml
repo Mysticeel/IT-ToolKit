@@ -60,6 +60,18 @@ jobs:
 
           New-Item -ItemType Directory -Path ./test-results -Force | Out-Null
 
+          $sourceFiles = @(
+              Get-ChildItem -Path ./src -Recurse -File |
+                  Where-Object { $_.Extension -in '.ps1', '.psm1' } |
+                  Select-Object -ExpandProperty FullName
+          )
+
+          if ($sourceFiles.Count -eq 0) {
+              throw "No PowerShell source files found for code coverage."
+          }
+
+          Write-Host "Collecting coverage for $($sourceFiles.Count) source files."
+
           $config = New-PesterConfiguration
 
           $config.Run.Path = './tests'
@@ -70,6 +82,12 @@ jobs:
           $config.TestResult.OutputFormat = 'NUnitXml'
           $config.TestResult.OutputPath = './test-results/pester-results.xml'
 
+          $config.CodeCoverage.Enabled = $true
+          $config.CodeCoverage.Path = $sourceFiles
+          $config.CodeCoverage.OutputFormat = 'JaCoCo'
+          $config.CodeCoverage.OutputPath = './test-results/coverage.xml'
+          $config.CodeCoverage.CoveragePercentTarget = 0
+
           Invoke-Pester -Configuration $config
 
       - name: Upload Pester test results
@@ -78,6 +96,15 @@ jobs:
         with:
           name: pester-test-results
           path: test-results/pester-results.xml
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload code coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-code-coverage
+          path: test-results/coverage.xml
           if-no-files-found: error
           retention-days: 14
 
