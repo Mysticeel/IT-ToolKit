@@ -58,9 +58,28 @@ jobs:
           Remove-Module Pester -Force -ErrorAction SilentlyContinue
           Import-Module Pester -RequiredVersion 6.2.0 -Force -ErrorAction Stop
 
-          Invoke-Pester `
-            -Path ./tests `
-            -CI
+          New-Item -ItemType Directory -Path ./test-results -Force | Out-Null
+
+          $config = New-PesterConfiguration
+
+          $config.Run.Path = './tests'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputFormat = 'NUnitXml'
+          $config.TestResult.OutputPath = './test-results/pester-results.xml'
+
+          Invoke-Pester -Configuration $config
+
+      - name: Upload Pester test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-test-results
+          path: test-results/pester-results.xml
+          if-no-files-found: error
+          retention-days: 14
 
   analyze:
     name: PSScriptAnalyzer
