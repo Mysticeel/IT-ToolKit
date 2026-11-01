@@ -17,6 +17,7 @@ jobs:
   test:
     name: Pester Tests
     runs-on: windows-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -34,6 +35,21 @@ jobs:
             -SkipPublisherCheck `
             -ErrorAction Stop
 
+      - name: Verify Pester version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Import-Module Pester -RequiredVersion 6.2.0 -Force -ErrorAction Stop
+
+          $version = (Get-Module Pester).Version.ToString()
+
+          if ($version -ne '6.2.0') {
+              throw "Unexpected Pester version: $version"
+          }
+
+          Write-Host "Pester version $version verified."
+
       - name: Run Pester tests
         shell: pwsh
         run: |
@@ -49,6 +65,7 @@ jobs:
   analyze:
     name: PSScriptAnalyzer
     runs-on: windows-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -64,6 +81,21 @@ jobs:
             -Scope CurrentUser `
             -Force `
             -ErrorAction Stop
+
+      - name: Verify PSScriptAnalyzer version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Import-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Force -ErrorAction Stop
+
+          $version = (Get-Module PSScriptAnalyzer).Version.ToString()
+
+          if ($version -ne '1.25.0') {
+              throw "Unexpected PSScriptAnalyzer version: $version"
+          }
+
+          Write-Host "PSScriptAnalyzer version $version verified."
 
       - name: Run PSScriptAnalyzer
         shell: pwsh
